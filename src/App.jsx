@@ -1,16 +1,15 @@
-import React from 'react';
-import AppRoutes from './routes';
+import { BrowserRouter as Router } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import AppRoutes from "./routes/index";
 
-import './App.css'
-
-function App() {
-
-
+export default function App() {
   return (
-    <>
-      <AppRoutes />
-    </>
-  )
+    <Router>
+      <Navbar />
+      <div className="container mx-auto mt-6">
+        <AppRoutes />
+      </div>
+    </Router>
+  );
 }
 
-export default App
