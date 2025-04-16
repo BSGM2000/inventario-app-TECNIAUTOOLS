@@ -1,5 +1,6 @@
 // routes/repuestosRoutes.js
 import express from 'express';
+import  upload  from '../config/upload.js';
 import {
   getAllRepuestos,
   createRepuesto,
@@ -10,8 +11,8 @@ import {
 const router = express.Router();
 
 router.get('/', getAllRepuestos);
-router.post('/', createRepuesto);
-router.put('/:id', updateRepuesto);
+router.post('/', upload.single("imagen") ,createRepuesto);
+router.put('/:id',upload.single("imagen"), updateRepuesto);
 router.delete('/:id', deleteRepuesto);
 
 export default router;
