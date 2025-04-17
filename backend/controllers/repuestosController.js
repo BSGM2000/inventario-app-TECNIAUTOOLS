@@ -6,7 +6,23 @@ import db from '../config/db.js';
 
 // GET  /api/repuestos
 export const getAllRepuestos = (req, res) => {
-  const sql = 'SELECT * FROM Repuestos';
+  const sql = `
+    SELECT 
+      R.id_repuesto,
+      R.nombre,
+      R.descripcion,
+      R.precio,
+      R.stock_actual,
+      R.ubicacion,
+      R.imagen_url,
+      C.nombre AS categoria,
+      P.nombre AS proveedor
+    FROM repuestos R
+    LEFT JOIN categorias C 
+      ON R.id_categoria = C.id_categoria
+    LEFT JOIN proveedores P
+      ON R.id_proveedor = P.id_proveedor
+  `;
   db.query(sql, (err, results) => {
     if (err) {
       console.error('Error al obtener repuestos:', err);
@@ -21,16 +37,20 @@ export const createRepuesto = async (req, res) => {
   try{
     //Procesar la imagen si existe
     let imageUrl = null;
+
     if(req.file){
       const inputPath = req.file.path;
-      const outputName = `resized-${req.file.filename}`;
-      const outputPath = path.join('uploads', outputName);
+        const outputName = `resized-${req.file.filename}`;
+        const outputPath = path.join('uploads', outputName);
 
       //redimensionar la imagen
       await sharp(inputPath)
-        .resize({width: 800})
-        .jpeg({quality: 80})
-        .toFile(outputPath);
+      .resize(250, 250, {          // ancho y alto fijos
+        fit: 'cover',               // recorta para que cubra 150×150
+        position: 'center',         // centrado en el recorte
+      })
+      .jpeg({ quality: 80 })        // si es JPG; si quieres PNG usa .png()
+      .toFile(outputPath);
       //Eliminar la imagen original
       fs.unlinkSync(inputPath);
 
@@ -109,7 +129,7 @@ export const updateRepuesto = async (req, res) => {
         await sharp(inputPath)
           .resize({ width: 250,
             height: 250,
-            fit:'inside',
+            fit:'cover',
             withoutEnlargement: true,
             position: 'center' })
           .jpeg({ quality: 80 })

@@ -12,8 +12,10 @@ const RepuestosTable = ({ repuestos, onEdit, onDelete }) => {
             <th className="border px-4 py-2">Descripción</th>
             <th className="border px-4 py-2">Precio</th>
             <th className="border px-4 py-2">Stock</th>
+            <th className="border px-4 py-2">Categoria</th>
+            <th className="border px-4 py-2">Proveedor</th>
             <th className="border px-4 py-2">Ubicación</th>
-            <th className="border px-4 py-2">Imagen</th>
+            <th className="border p-0 w-[80px]">Imagen</th>
             <th className="border px-4 py-2">Acciones</th>
           </tr>
         </thead>
@@ -24,17 +26,23 @@ const RepuestosTable = ({ repuestos, onEdit, onDelete }) => {
               <td className="border px-4 py-2 text-center ">{r.descripcion}</td>
               <td className="border px-4 py-2 text-center">${r.precio.toLocaleString()}</td>
               <td className="border px-4 py-2 text-center">{r.stock_actual}</td>
+              <td className="border px-4 py-2 text-center">{r.categoria}</td>
+              <td className="border px-4 py-2 text-center">{r.proveedor}</td>   
               <td className="border px-4 py-2 text-center">{r.ubicacion}</td>
-              <td className="border px-4 py-2 flex justify-center items-center">
-                {r.imagen_url ? (
-                  <img
-                    src={r.imagen_url}
-                    alt={r.nombre}
-                    className="w-fit h-fit object-contain"
-                  />
-                ) : (
-                  <span className="text-gray-400 italic">Sin imagen</span>
-                )}
+              <td className="border p-0 w-[150px]">
+                <div className="w-full h-full flex items-center justify-center">
+                  {r.imagen_url ? (
+                    <img
+                      src={r.imagen_url}
+                      alt={r.nombre}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-gray-400 italic text-xs">
+                      Sin imagen
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="border px-4 py-2 text-center">
                 <button
