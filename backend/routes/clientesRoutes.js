@@ -10,9 +10,9 @@ import {
 const router = express.Router();
 
 // Rutas para clientes
-router.get('/clientes', getAllClients);
-router.post('/clientes', createClient);
-router.put('/clientes/:id', updateClient);
-router.delete('/clientes/:id', deleteClient);
+router.get('/', getAllClients);
+router.post('/', createClient);
+router.put('/:id', updateClient);
+router.delete('/:id', deleteClient);
 
 export default router; // Usar export default

@@ -109,6 +109,7 @@ function App() {
                       onRepuestoCreado={handleSaved}
                       repuestoEnEdicion={repuestoEnEdicion}
                     />
+                    <h2>Buscador de Repuestos</h2>
                     <SearchBar onSearch={handleSearch} />
                     <RepuestosTable
                       repuestos={filteredRepuestos}

@@ -22,30 +22,62 @@ export const getAllClients = (req, res) => {
 
 // POST /api/clientes
 export const createClient = (req, res) => {
-  const { nombre, contacto, direccion, otros_datos } = req.body;
+  const { id_cliente, nombre, contacto, direccion, otros_datos } = req.body;
 
   // Validación básica
   if (!nombre || !contacto) {
     return res.status(400).json({ message: 'Nombre y contacto son obligatorios' });
   }
 
-  const sql = `
-    INSERT INTO clientes
-      (nombre, contacto, direccion, otros_datos)
-    VALUES (?, ?, ?, ?)
-  `;
-  const values = [nombre, contacto, direccion || null, otros_datos || null];
+  // Verificar si el id_cliente ya existe
+  if (id_cliente) {
+    const checkSql = 'SELECT id_cliente FROM clientes WHERE id_cliente = ?';
+    db.query(checkSql, [id_cliente], (err, results) => {
+      if (err) {
+        console.error('Error al verificar id_cliente:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      if (results.length > 0) {
+        return res.status(400).json({ message: 'El id_cliente ya existe' });
+      }
 
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error('Error al crear cliente:', err);
-      return res.status(500).json({ error: err.message });
-    }
-    res.status(201).json({
-      message: 'Cliente creado',
-      id_cliente: result.insertId,
+      // Insertar el cliente
+      const sql = `
+        INSERT INTO clientes
+          (id_cliente, nombre, contacto, direccion, otros_datos)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      const values = [id_cliente, nombre, contacto, direccion || null, otros_datos || null];
+      db.query(sql, values, (err, result) => {
+        if (err) {
+          console.error('Error al crear cliente:', err);
+          return res.status(500).json({ error: err.message });
+        }
+        res.status(201).json({
+          message: 'Cliente creado',
+          id_cliente: id_cliente || result.insertId, // Usar el id proporcionado o el generado
+        });
+      });
     });
-  });
+  } else {
+    // Si no se proporciona id_cliente, dejar que la base de datos lo genere
+    const sql = `
+      INSERT INTO clientes
+        (nombre, contacto, direccion, otros_datos)
+      VALUES (?, ?, ?, ?)
+    `;
+    const values = [nombre, contacto, direccion || null, otros_datos || null];
+    db.query(sql, values, (err, result) => {
+      if (err) {
+        console.error('Error al crear cliente:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({
+        message: 'Cliente creado',
+        id_cliente: result.insertId,
+      });
+    });
+  }
 };
 
 // PUT /api/clientes/:id
