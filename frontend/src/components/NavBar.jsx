@@ -22,6 +22,12 @@ const NavBar = ({ onLogout }) => {
         >
           Clientes
         </Link>
+        <Link
+          to="/ventas"
+          className="hover:bg-blue-700 px-3 py-2 rounded transition-colors"
+        >
+          Ventas
+        </Link>
         <button
           onClick={onLogout}
           className="bg-red-500 px-3 py-2 rounded hover:bg-red-600 transition-colors"

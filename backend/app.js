@@ -6,6 +6,7 @@ import repuestosRoutes from './routes/repuestosRoutes.js';
 import categoriasRoutes from './routes/categoriasRoutes.js';
 import proveedoresRoutes from './routes/proveedoresRoutes.js';
 import clientesRoutes from './routes/clientesRoutes.js';
+import ventasRoutes from './routes/ventasRoutes.js';
 import verifyToken from './middleware/auth.js';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
@@ -36,19 +37,10 @@ app.use('/uploads', express.static(path.join(__dirname,'uploads')));// ← Agreg
 console.log('Ruta de archivos públicos:', path.join(__dirname, 'uploads'));
 
 app.use('/api/repuestos', repuestosRoutes);
-app.get('/api/repuestos', verifyToken, (req, res) => {
-  const sql = 'SELECT * FROM Repuestos';
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error('Error al obtener repuestos:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    res.json(results);
-  });
-});
 app.use('/api/categorias', categoriasRoutes); // ← Agregado
 app.use('/api/proveedores', proveedoresRoutes); // ← Agregado
 app.use('/api/clientes', clientesRoutes); // ← Agregado
+app.use('/api/ventas', ventasRoutes); // ← Agregado
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
 

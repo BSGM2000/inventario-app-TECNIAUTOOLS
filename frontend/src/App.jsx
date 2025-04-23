@@ -13,6 +13,7 @@ import RepuestosTable from "./components/RepuestosTable";
 import SearchBar from "./components/SearchBar";
 import PrivateRoute from "./components/PrivateRoute";
 import ClientPage from "./pages/ClientPage";
+import VentasPage from "./pages/VentasPage";
 
 
 function App() {
@@ -125,6 +126,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <ClientPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/ventas"
+              element={
+                <PrivateRoute>
+                  <VentasPage />
                 </PrivateRoute>
               }
             />
