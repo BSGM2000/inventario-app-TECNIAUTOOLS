@@ -1,154 +1,125 @@
-import {
-  Route,
-  Routes,
-  Navigate,
-  useNavigate, // Correcto: useNavigate se usa dentro del componente
-} from "react-router-dom";
+import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { useIdle } from "./hooks/useIdle";
 import Login from "./components/Login";
 import NavBar from "./components/NavBar";
-import RepuestoForm from "./components/RepuestoForm";
-import RepuestosTable from "./components/RepuestosTable";
-import SearchBar from "./components/SearchBar";
+import RepuestoPage from "./pages/RepuestoPage";
 import PrivateRoute from "./components/PrivateRoute";
 import ClientPage from "./pages/ClientPage";
-import VentasPage from "./pages/VentasPage";
-
+import ProveedoresPage from "./pages/ProveedoresPage";
+import CompraPage from "./pages/CompraPage";
+import VentaPage from "./pages/VentaPage";
+import RegistroUsuarios from "./components/RegistroUsuarios";
+import "./styles/App.css";
 
 function App() {
-  const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState("");
-  const [repuestos, setRepuestos] = useState([]);
-  const [repuestoEnEdicion, setRepuestoEnEdicion] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
+    const navigate = useNavigate();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [token, setToken] = useState("");
 
-  const handleLoginSuccess = (token) => {
-    setIsAuthenticated(true);
-    setToken(token);
-    localStorage.setItem("token", token); // Guardar token en localStorage
-    navigate("/repuestos"); // Redirigir a la página de repuestos
-  };
-  
-  // Función para manejar la búsqueda
-  const handleSearch = (query) => {
-    setSearchQuery(query.toLowerCase());
-  };
+    const handleLoginSuccess = (token) => {
+        setIsAuthenticated(true);
+        setToken(token);
+        localStorage.setItem("token", token);
+        navigate("/repuestos");
+    };
 
-  //Cargar repuestos
-  const fetchRepuestos = async () => {
-    const res = await axios.get("http://localhost:3000/api/repuestos", {
-      headers: {
-        Authorization: `Bearer ${token}`, // Incluir el token en los encabezados
-      },
-    });
-    setRepuestos(res.data);
-  };
-  // Filtrar repuestos según la búsqueda
-  const filteredRepuestos = repuestos.filter((r) =>
-    r.nombre.toLowerCase().includes(searchQuery) ||
-    r.descripcion.toLowerCase().includes(searchQuery) ||
-    r.categoria.toLowerCase().includes(searchQuery) ||
-    r.proveedor.toLowerCase().includes(searchQuery)
-  );
+    const handleLogout = () => {
+        setIsAuthenticated(false);
+        setToken("");
+        localStorage.removeItem("token");
+        navigate("/login");
+    };
 
-  //Cargar repuestos al iniciar
-  useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    if (storedToken) {
-      setIsAuthenticated(true);
-      setToken(storedToken);
-    }
-    fetchRepuestos(); // Cargar los repuestos
-  }, []);
-  //Confirmacion de eliminación
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Seguro que quieres eliminar este repuesto?")) return;
-    await axios.delete(`http://localhost:3000/api/repuestos/${id}`);
-    fetchRepuestos();
-  };
-  //Edición de repuestos
-  const handleEdit = (repuesto) => {
-    setRepuestoEnEdicion(repuesto);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  //Guardar repuestos
-  const handleSaved = () => {
-    setRepuestoEnEdicion(null);
-    fetchRepuestos();
-  };
-  //Cerrar sesión 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setToken("");
-    localStorage.removeItem("token"); // Eliminar token de localStorage
-    navigate("/login"); // Redirigir a la página de inicio de sesión
-  };
+    // Usar el hook de inactividad
+    const { isIdle } = useIdle(handleLogout);
 
-  return (
-      <div >
-        {isAuthenticated && <NavBar onLogout={handleLogout} />}
-        
-        <div className="p-4 mt-20">
-          <Routes>
-            <Route
-              path="/"
-              element={<Navigate to="/repuestos" replace />}
-            />
-            
-            {/* Rutas protegidas */}
-            <Route
-              path="/repuestos"
-              element={
-                <PrivateRoute>
-                  <>
-                    <br />
-                    <br />
+    // Verificar token al cargar la aplicación
+    useEffect(() => {
+        const storedToken = localStorage.getItem("token");
+        if (storedToken) {
+            setIsAuthenticated(true);
+            setToken(storedToken);
+        }
+    }, []);
 
-                    <RepuestoForm
-                      onRepuestoCreado={handleSaved}
-                      repuestoEnEdicion={repuestoEnEdicion}
+    return (
+        <div className="App">
+            {isAuthenticated && <NavBar onLogout={handleLogout} />}
+            <div className="p-4 mt-20" style={{ marginTop: '80px' }}>
+                <Routes>
+                    <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+                    <Route
+                        path="/repuestos"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <RepuestoPage />
+                            </PrivateRoute>
+                        }
                     />
-                    <h2>Buscador de Repuestos</h2>
-                    <SearchBar onSearch={handleSearch} />
-                    <RepuestosTable
-                      repuestos={filteredRepuestos}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
+                    <Route
+                        path="/usuarios"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <RegistroUsuarios />
+                            </PrivateRoute>
+                        }
                     />
-                  </>
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/clientes"
-              element={
-                <PrivateRoute>
-                  <ClientPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/ventas"
-              element={
-                <PrivateRoute>
-                  <VentasPage />
-                </PrivateRoute>
-              }
-            />
-            
-            {/* Ruta pública */}
-            <Route
-              path="/login"
-              element={<Login onLoginSuccess={handleLoginSuccess} />}
-            />
-          </Routes>
+                    <Route
+                        path="/clientes"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <ClientPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/proveedores"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <ProveedoresPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/compras"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <CompraPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/ventas"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <VentaPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route path="/" element={<Navigate to="/repuestos" replace />} />
+                </Routes>
+            </div>
         </div>
-      </div>
-    
-  );
+    );
 }
 
 export default App;
-

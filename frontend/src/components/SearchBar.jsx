@@ -1,4 +1,4 @@
-import React from "react";
+import styles from "../styles/SearchBar.module.css"; // Asegúrate de que la ruta sea correcta
 
 const SearchBar = ({ onSearch }) => {
   const handleChange = (e) => {
@@ -6,12 +6,12 @@ const SearchBar = ({ onSearch }) => {
   };
 
   return (
-    <div className="mb-4">
+    <div className={styles.searchBarContainer}>
       <input
         type="text"
-        placeholder="Buscar por nombre, descripción, categoría o proveedor..."
+        placeholder="Buscar por nombre, codigo, etc..."
         onChange={handleChange}
-        className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className={styles.searchInput}
       />
     </div>
   );

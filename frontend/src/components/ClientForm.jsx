@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from "react";
+import styles from "../styles/Form.module.css"; // Importa los estilos
 
-const ClientForm = ({ initialData, onSave }) => {
+const ClientForm = ({ initialData, onSave, onClientSaved, onClose }) => {
   const [client, setClient] = useState({
-    id_cliente: initialData?.id_cliente || "",
+    codigo_cliente: initialData?.codigo_cliente || "",
     nombre: initialData?.nombre || "",
-    contacto: initialData?.contacto || "",
+    documento_cliente: initialData?.documento_cliente || "",
+    ciudad: initialData?.ciudad || "",
     direccion: initialData?.direccion || "",
-    otros_datos: initialData?.otros_datos || "",
+    telefono: initialData?.telefono || "",
+    correo: initialData?.correo || "",
   });
 
-  // Actualizar el estado si initialData cambia
   useEffect(() => {
     if (initialData) {
       setClient({
-        id_cliente: initialData.id_cliente || "",
+        codigo_cliente: initialData.codigo_cliente || "",
         nombre: initialData.nombre || "",
-        contacto: initialData.contacto || "",
+        documento_cliente: initialData.documento_cliente || "",
+        ciudad: initialData.ciudad || "",
         direccion: initialData.direccion || "",
-        otros_datos: initialData.otros_datos || "",
+        telefono: initialData.telefono || "",
+        correo: initialData.correo || "",
       });
     }
   }, [initialData]);
@@ -26,82 +30,129 @@ const ClientForm = ({ initialData, onSave }) => {
     e.preventDefault();
     onSave(client);
     setClient({
-      id_cliente: "",
+      codigo_cliente: "",
       nombre: "",
-      contacto: "",
+      documento_cliente: "",
+      ciudad: "",
       direccion: "",
-      otros_datos: "",
+      telefono: "",
+      correo: "",
     });
+    if (onClientSaved) {
+      onClientSaved();
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setClient({ ...client, [name]: value });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg shadow">
-      <h3 className="text-lg font-bold mb-4">
+    <form onSubmit={handleSubmit} className={styles.formContainer}>
+      <h3 className={styles.formTitle}>
         {initialData ? "Editar Cliente" : "Nuevo Cliente"}
       </h3>
 
-      {/* Campo ID (solo para edición) */}
-      {initialData && (
-        <div className="mb-4">
-          <label className="block mb-1">ID Cliente</label>
+      <div className={`${styles.gridForm}`}>
+        {/* Campo ID (solo para edición) */}
+        {initialData && (
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Código Cliente</label>
+            <input
+              type="text"
+              value={client.codigo_cliente}
+              name="codigo_cliente"
+              onChange={handleInputChange}
+              className={styles.inputField}
+              disabled
+            />
+          </div>
+        )}
+        <div className={styles.formGroup}>
+          <label className={styles.label}>CÓDIGO CLIENTE</label>
           <input
             type="text"
-            value={client.id_cliente}
-            onChange={(e) => setClient({ ...client, id_cliente: e.target.value })}
-            className="w-full p-2 border rounded"
-            disabled // ← Deshabilitar edición del ID
+            value={client.codigo_cliente}
+            name="codigo_cliente"
+            onChange={handleInputChange}
+            className={styles.inputField}
+            required
           />
         </div>
-      )}
 
-      <div className="mb-4">
-        <label className="block mb-1">Nombre:</label>
-        <input
-          type="text"
-          value={client.nombre}
-          onChange={(e) => setClient({ ...client, nombre: e.target.value })}
-          className="w-full p-2 border rounded"
-          required
-        />
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Nombre:</label>
+          <input
+            type="text"
+            value={client.nombre}
+            name="nombre"
+            onChange={handleInputChange}
+            className={styles.inputField}
+            required
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Documento Cliente</label>
+          <input
+            type="text"
+            value={client.documento_cliente}
+            name="documento_cliente"
+            onChange={handleInputChange}
+            className={styles.inputField}
+            required
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Ciudad:</label>
+          <input
+            type="text"
+            value={client.ciudad}
+            name="ciudad"
+            onChange={handleInputChange}
+            className={styles.inputField}
+            required
+          />
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Dirección:</label>
+          <input
+            type="text"
+            value={client.direccion}
+            name="direccion"
+            onChange={handleInputChange}
+            className={styles.inputField}
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Teléfono:</label>
+          <input
+            type="text"
+            value={client.telefono}
+            name="telefono"
+            onChange={handleInputChange}
+            className={styles.inputField}
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.label}>Correo:</label>
+          <input
+            type="text"
+            value={client.correo}
+            name="correo"
+            onChange={handleInputChange}
+            className={styles.inputField}
+          />
+        </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block mb-1">Contacto:</label>
-        <input
-          type="text"
-          value={client.contacto}
-          onChange={(e) => setClient({ ...client, contacto: e.target.value })}
-          className="w-full p-2 border rounded"
-          required
-        />
-      </div>
-
-      <div className="mb-4">
-        <label className="block mb-1">Dirección:</label>
-        <textarea
-          value={client.direccion}
-          onChange={(e) => setClient({ ...client, direccion: e.target.value })}
-          className="w-full p-2 border rounded"
-          rows="2"
-        />
-      </div>
-
-      <div className="mb-4">
-        <label className="block mb-1">Otros Datos:</label>
-        <textarea
-          value={client.otros_datos}
-          onChange={(e) => setClient({ ...client, otros_datos: e.target.value })}
-          className="w-full p-2 border rounded"
-          rows="2"
-        />
-      </div>
-
-      <button
-        type="submit"
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
+      <button type="submit" className={styles.submitButton}>
         {initialData ? "Actualizar" : "Guardar"}
       </button>
+      <button type="button" onClick={onClose} className={styles.deleteButton}>Cancelar</button>
     </form>
   );
 };

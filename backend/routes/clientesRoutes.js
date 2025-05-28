@@ -1,5 +1,6 @@
 // src/routes/clients.routes.js
 import express from 'express';
+import verifyToken from '../middleware/auth.js'; // Asegúrate de que la ruta sea correcta
 import {
     getAllClients,
     createClient,
@@ -10,9 +11,9 @@ import {
 const router = express.Router();
 
 // Rutas para clientes
-router.get('/', getAllClients);
-router.post('/', createClient);
-router.put('/:id', updateClient);
-router.delete('/:id', deleteClient);
+router.get('/', verifyToken, getAllClients);
+router.post('/', verifyToken, createClient);
+router.put('/:id', verifyToken, updateClient);
+router.delete('/:id', verifyToken, deleteClient);
 
 export default router; // Usar export default

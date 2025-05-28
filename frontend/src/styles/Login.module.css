@@ -1,0 +1,79 @@
+/* styles/Login.module.css */
+.loginContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 1vh; /* Asegura que el contenedor ocupe al menos la altura de la ventana */
+  padding: 1rem; /* Añade un poco de espacio en los bordes en pantallas pequeñas */
+
+}
+
+.loginForm {
+  background-color: var(--primary-white);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px var(--primary-green);
+  width: 90%; /* Ancho adaptable en pantallas pequeñas */
+  max-width: 400px; /* Ancho máximo en pantallas más grandes */
+}
+
+.formTitle {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  color: var(--primary-green);
+  text-align: center;
+}
+
+.errorMessage {
+  color: var(--primary-red); /* Rojo para los mensajes de error */
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.formGroup {
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: var(--primary-green);
+}
+
+.inputField {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.inputField:focus {
+  border-color: var(--primary-green); /* Verde primario al enfocar */
+  box-shadow: 0 0 0 0.2rem var(--primary-green); /* Sutil sombra al enfocar */
+}
+
+.loginButton {
+  width: 100%;
+  background-color: var(--primary-green); /* Verde primario para el botón */
+  color: var(--primary-white);
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.loginButton:hover {
+  background-color: var(--primary-green); /* Tono más oscuro al hacer hover */
+}
+
+/* No es necesario un media query muy complejo aquí, ya que el formulario es adaptable */

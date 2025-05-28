@@ -1,20 +1,31 @@
 import jwt from 'jsonwebtoken';
 
-const verifyToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del encabezado
+export const verifyToken = (req, res, next) => {
 
-  if (!token) {
-    return res.status(401).json({ message: 'Acceso no autorizado' });
-  }
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-  jwt.verify(token, 'secreto', (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: 'Token inválido' });
+    if (!token) {
+        return res.status(401).json({ 
+            success: false,
+            message: 'Acceso no autorizado: Token no proporcionado' 
+        });
     }
 
-    req.userId = decoded.id_usuario; // Guardar el ID del usuario en la solicitud
-    next();
-  });
+    jwt.verify(token, process.env.JWT_SECRET || 'secreto_por_defecto', (err, decoded) => {
+        if (err) {
+            console.error('Error al verificar el token:', err.message);
+            return res.status(403).json({ 
+                success: false,
+                message: 'Token inválido o expirado',
+                error: process.env.NODE_ENV === 'development' ? err.message : undefined
+            });
+        }
+        
+        req.userId = decoded.id;
+        req.userRol = decoded.rol;
+        next();
+    });
 };
 
 export default verifyToken;

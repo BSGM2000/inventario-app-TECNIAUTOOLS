@@ -1,0 +1,162 @@
+.tableContainer {
+  padding: 1rem;
+  overflow-x: auto; /* Permite el desplazamiento horizontal si la tabla es muy ancha */
+}
+
+.tableTitle {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--secondary-text);
+}
+
+.Table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+}
+
+.tableHead {
+  background-color: #86ff9070;
+  text-align: center;
+}
+
+.tableHeaderCell {
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  text-align: center;
+  font-weight: bold;
+  color: var(--secondary-text);
+}
+.tableRow{
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+.tableRow:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.tableCell {
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.imageContainer {
+  width: 80px; /* Ancho fijo para las imágenes */
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* Recorta las imágenes si no encajan */
+}
+
+.repuestoImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.noImageText {
+  color: #777;
+  font-style: italic;
+  font-size: 0.75rem;
+}
+
+.actionsCell {
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  text-align: center;
+  white-space: nowrap; /* Evita que los botones se envuelvan */
+}
+
+.editButton,
+.deleteButton {
+  color: var(--primary-white);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+  border: none;
+  font-size: 0.875rem; /* Reduce un poco el tamaño del texto en botones */
+  margin-right: 0.5rem
+}
+
+.editButton {
+  background-color: #4CAF50;
+  margin-right: 0.5rem;
+}
+.editButton:last-child {
+  margin-right: 0; /* Elimina el margen derecho del último botón */
+}
+
+.editButton:hover {
+  background-color: white;
+  color: #388E3C;
+  border: 1px solid #388E3C;
+  scale: 1.1;
+}
+
+.deleteButton {
+  background-color: var(--primary-red);
+}
+
+.deleteButton:hover {
+  background-color: white;
+  color: #D32F2F;
+  border: 1px solid #D32F2F;
+  scale: 1.1;
+}
+
+/* Estilos para pantallas más pequeñas */
+@media (max-width: 768px) {
+  .Table thead {
+    display: none; /* Oculta el encabezado de la tabla */
+  }
+
+  .Table tbody tr {
+    display: block; /* Cada fila se muestra como un bloque */
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    padding: 0.75rem;
+  }
+
+  .Table tbody td {
+    display: block; /* Cada celda se muestra como un bloque */
+    text-align: right; /* Alinea el texto a la derecha */
+    padding-left: 50%; /* Crea espacio para la etiqueta */
+    position: relative;
+    border: none;
+  }
+
+  .Table tbody td::before {
+    content: attr(data-label); /* Muestra el nombre de la columna como etiqueta */
+    position: absolute;
+    left: 0;
+    padding-left: 0.75rem;
+    font-weight: bold;
+    text-align: left;
+  }
+  
+  .imageContainer {
+    width: 60px;
+    height: 60px;
+  }
+
+  .actionsCell {
+    display: flex;
+    flex-direction: column; /* Acomoda los botones en columna en pantallas pequeñas */
+    align-items: center; /* Centra los botones horizontalmente */
+    white-space: normal; /* Permite el wrap si el texto del botón es largo */
+  }
+
+  .editButton,
+  .deleteButton {
+    font-size: 0.75rem;
+    padding: 0.5rem; /* Reduce el padding un poco */
+    margin-bottom: 0.5rem; /* Añade margen inferior entre botones */
+    width: 100%; /* Ocupan todo el ancho disponible */
+    margin-right: 0; /* Elimina el margen derecho */
+  }
+}

@@ -1,220 +1,486 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
+import styles from '../styles/Form.module.css';
+import axios from 'axios';
 
-const VentaForm = ({ initialData, clientes, onSave }) => {
-  // Estado inicial para la venta
-  const [venta, setVenta] = useState({
-    id_venta: initialData?.id_venta || "",
-    fecha_venta: initialData?.fecha_venta || new Date().toISOString().split("T")[0], // Cambiado a fecha_venta
-    metodo_pago: initialData?.metodo_pago || "",
-    total: initialData?.total || 0,
-    id_cliente: initialData?.id_cliente || "",
-    detalles: initialData?.detalles || []
-  });
+const VentaForm = ({ initialData, onSave, onClose }) => {
+    const token = localStorage.getItem("token");
+    const [clientes, setClientes] = useState([]);
+    const [repuestos, setRepuestos] = useState([]);
+    const [detallesVenta, setDetallesVenta] = useState([{ 
+        id_repuesto: '', 
+        cantidad: '', 
+        precio_unitario: '', 
+        subtotal: 0,
+        precio_compra: null,
+        porcentaje_utilidad: 0,
+        error: null
+    }]);
+    const [fechaVenta, setFechaVenta] = useState('');
+    const [metodoPago, setMetodoPago] = useState('');
+    const [idCliente, setIdCliente] = useState('');
+    const [totalVenta, setTotalVenta] = useState(0);
+    const [errorsModal, setErrorsModal] = useState({});
+    const [porcentajeUtilidad, setPorcentajeUtilidad] = useState(0); // 0.10 para 10%, 0.20 para 20%, etc.
 
-  // Estados adicionales para detalles y total
-  const [detalles, setDetalles] = useState(initialData?.detalles || []);
-  const [total, setTotal] = useState(0);
+    // Cargar datos iniciales
+    useEffect(() => {
+        const cargarDatosIniciales = async () => {
+            try {
+                const [clientesRes, repuestosRes] = await Promise.all([
+                    axios.get('http://localhost:3000/api/clientes', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }),
+                    axios.get('http://localhost:3000/api/repuestos', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    })
+                ]);
+                
+                setClientes(clientesRes.data);
+                setRepuestos(repuestosRes.data);
 
-  // Agregar un nuevo detalle
-  const handleAddDetalle = () => {
-    setDetalles([...detalles, { id_repuesto: "", cantidad: 0, precio_unitario: 0, subtotal: 0 }]);
-  };
+                if (initialData) {
+                    // Cargar datos de edición
+                    setIdCliente(initialData.id_cliente || '');
+                    setFechaVenta(formatearFecha(initialData.fecha_venta));
+                    setMetodoPago(initialData.metodo_pago || '');
+                    
+                    const detallesConPrecio = await Promise.all(
+                        initialData.detalles.map(async detalle => {
+                            const precioCompra = await obtenerPrecioCompra(detalle.id_repuesto);
+                            return {
+                                ...detalle,
+                                precio_compra: precioCompra,
+                                error: null
+                            };
+                        })
+                    );
+                    
+                    setDetallesVenta(detallesConPrecio);
+                    setTotalVenta(initialData.total || 0);
+                }
+            } catch (error) {
+                console.error('Error al cargar datos:', error);
+            }
+        };
 
-  // Eliminar un detalle
-  const handleRemoveDetalle = (index) => {
-    const nuevosDetalles = detalles.filter((_, i) => i !== index);
+        cargarDatosIniciales();
+    }, [token, initialData]);
 
-    // Recalcular el total después de eliminar un detalle
-    const nuevoTotal = nuevosDetalles.reduce((acc, detalle) => acc + detalle.subtotal, 0);
+    const formatearFecha = (fecha) => {
+        if (!fecha) return '';
+        const date = new Date(fecha);
+        return date.toISOString().split('T')[0];
+    };
 
-    setDetalles(nuevosDetalles);
-    setTotal(nuevoTotal);
-  };
+    const obtenerPrecioCompra = async (idRepuesto) => {
+        if (!idRepuesto) return null;
+        try {
+            const response = await axios.get(
+                `http://localhost:3000/api/repuestos/precio-compra/${idRepuesto}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            return response.data.precio_compra_sin_iva;
+        } catch (error) {
+            console.error('Error al obtener precio de compra:', error);
+            return null;
+        }
+    };
 
-  // Actualizar un detalle
-  const handleUpdateDetalle = (index, field, value) => {
-    const nuevosDetalles = [...detalles];
+    const actualizarSubtotal = useCallback((detalles) => {
+        return detalles.map(detalle => {
+            const cantidad = parseFloat(detalle.cantidad) || 0;
+            const precio = parseFloat(detalle.precio_unitario) || 0;
+            return {
+                ...detalle,
+                subtotal: cantidad * precio
+            };
+        });
+    }, []);
 
-    // Validar que los valores sean números
-    if (field === "id_repuesto" || field === "cantidad" || field === "precio_unitario") {
-      if (isNaN(value) || value === "") {
-        return alert(`El campo ${field} debe ser un número válido.`);
-      }
-    }
+    const validarPrecioVenta = useCallback((detalle) => {
+        if (!detalle.precio_compra || !detalle.precio_unitario) {
+            return { ...detalle, error: null };
+        }
+        
+        const precioVenta = parseFloat(detalle.precio_unitario);
+        const precioCompra = parseFloat(detalle.precio_compra);
+        
+        return {
+            ...detalle,
+            error: precioVenta <= precioCompra 
+                ? 'El precio de venta debe ser mayor que el precio de compra sin IVA.' 
+                : null
+        };
+    }, []);
 
-    nuevosDetalles[index][field] = value;
+    const calcularPrecioVenta = (precioCompra, porcentaje) => {
+        if (!precioCompra) return '';
+        const utilidad = parseFloat(precioCompra) * parseFloat(porcentaje);
+        return (parseFloat(precioCompra) + utilidad).toFixed(2);
+      };
+    
+    const handleRepuestoChange = async (index, event) => {
+        const idRepuesto = event.target.value;
+        const newDetalles = [...detallesVenta];
+        const precioCompra = idRepuesto ? await obtenerPrecioCompra(idRepuesto) : null;
+        const porcentajeActual = newDetalles[index].porcentaje_utilidad || 0;
+    
+        
+        newDetalles[index] = {
+            ...newDetalles[index],
+            id_repuesto: idRepuesto,
+            precio_compra: precioCompra,
+            error: null
+        };
+        
+        // Si hay un porcentaje de utilidad seleccionado, calcular el precio de venta
+        if (porcentajeActual > 0 && precioCompra) {
+            newDetalles[index].precio_unitario = calcularPrecioVenta(precioCompra, porcentajeActual);
+            // Recalcular subtotal
+            const cantidad = parseFloat(newDetalles[index].cantidad) || 0;
+            newDetalles[index].subtotal = cantidad * parseFloat(newDetalles[index].precio_unitario);
+        }
+        
+        setDetallesVenta(newDetalles);
+    };
 
-    // Calcular el subtotal automáticamente
-    if (field === "cantidad" || field === "precio_unitario") {
-      nuevosDetalles[index].subtotal =
-        nuevosDetalles[index].cantidad * nuevosDetalles[index].precio_unitario;
-    }
+    const handleCantidadChange = (index, event) => {
+        const newDetalles = [...detallesVenta];
+        newDetalles[index] = {
+            ...newDetalles[index],
+            cantidad: event.target.value
+        };
+        
+        // Actualizar subtotales
+        const detallesActualizados = actualizarSubtotal(newDetalles);
+        setDetallesVenta(detallesActualizados);
+        
+        // Actualizar total
+        const nuevoTotal = detallesActualizados.reduce((sum, detalle) => sum + (parseFloat(detalle.subtotal) || 0), 0);
+        setTotalVenta(nuevoTotal);
+    };
+    const handlePorcentajeUtilidadChange = (index, e) => {
+        const nuevoPorcentaje = parseFloat(e.target.value);
+        const newDetalles = [...detallesVenta];
+        
+        newDetalles[index] = {
+            ...newDetalles[index],
+            porcentaje_utilidad: nuevoPorcentaje
+        };
+    
+        // Si hay un precio de compra, recalcular el precio de venta
+        if (newDetalles[index].precio_compra && nuevoPorcentaje > 0) {
+            const nuevoPrecio = calcularPrecioVenta(newDetalles[index].precio_compra, nuevoPorcentaje);
+            newDetalles[index].precio_unitario = nuevoPrecio;
+            
+            // Recalcular subtotal
+            const cantidad = parseFloat(newDetalles[index].cantidad) || 0;
+            newDetalles[index].subtotal = cantidad * parseFloat(nuevoPrecio);
+        }
+        
+        setDetallesVenta(newDetalles);
+    };
+    const agregarDetalle = () => {
+        setDetallesVenta([
+            ...detallesVenta, 
+            { 
+                id_repuesto: '', 
+                cantidad: '', 
+                precio_unitario: '', 
+                subtotal: 0,
+                precio_compra: null,
+                porcentaje_utilidad: 0,
+                error: null
+            }
+        ]);
+    };
 
-    // Calcular el total sumando todos los subtotales
-    const nuevoTotal = nuevosDetalles.reduce((acc, detalle) => acc + detalle.subtotal, 0);
+    const eliminarDetalle = (index) => {
+        const newDetalles = detallesVenta.filter((_, i) => i !== index);
+        setDetallesVenta(newDetalles);
+        
+        // Actualizar total
+        const nuevoTotal = newDetalles.reduce((sum, detalle) => sum + (parseFloat(detalle.subtotal) || 0), 0);
+        setTotalVenta(nuevoTotal);
+    };
 
-    setDetalles(nuevosDetalles);
-    setTotal(nuevoTotal); // Actualizar el total
-  };
+    const validarFormulario = () => {
+        const nuevosErrores = {};
+        let esValido = true;
 
-  // Manejar el envío del formulario
-  const handleSubmit = (e) => {
-    e.preventDefault();
+        if (!idCliente) {
+            nuevosErrores.idCliente = 'El cliente es obligatorio.';
+            esValido = false;
+        }
 
-    // Validar campos obligatorios
-    if (!venta.fecha_venta || !venta.metodo_pago || !venta.id_cliente || detalles.length === 0) {
-      return alert("Todos los campos y al menos un detalle son obligatorios.");
-    }
+        if (!fechaVenta) {
+            nuevosErrores.fechaVenta = 'La fecha de venta es obligatoria.';
+            esValido = false;
+        }
 
-    // Actualizar el total en el estado de la venta
-    const ventaActualizada = { ...venta, total, detalles };
+        if (!metodoPago) {
+            nuevosErrores.metodoPago = 'El método de pago es obligatorio.';
+            esValido = false;
+        }
 
-    onSave(ventaActualizada);
+        // Validar detalles
+        const tieneErrores = detallesVenta.some((detalle, index) => {
+            if (!detalle.id_repuesto) {
+                nuevosErrores[`repuesto-${index}`] = 'El repuesto es obligatorio.';
+                return true;
+            }
+            if (!detalle.cantidad || parseFloat(detalle.cantidad) <= 0) {
+                nuevosErrores[`cantidad-${index}`] = 'La cantidad debe ser mayor a 0.';
+                return true;
+            }
+            if (!detalle.precio_unitario || parseFloat(detalle.precio_unitario) <= 0) {
+                nuevosErrores[`precio-${index}`] = 'El precio unitario debe ser mayor a 0.';
+                return true;
+            }
+            if (detalle.error) {
+                nuevosErrores[`precio-${index}`] = detalle.error;
+                return true;
+            }
+            return false;
+        });
 
-    // Reiniciar el formulario
-    setVenta({
-      fecha_venta: new Date().toISOString().split("T")[0],
-      metodo_pago: "",
-      total: 0,
-      id_cliente: "",
-      detalles: []
-    });
-    setDetalles([]);
-    setTotal(0); // Reiniciar el total
-  };
+        setErrorsModal(nuevosErrores);
+        return esValido && !tieneErrores;
+    };
 
-  return (
-    <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg shadow">
-      <h3 className="text-lg font-bold mb-4">{initialData ? "Editar Venta" : "Nueva Venta"}</h3>
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        
+        if (!validarFormulario()) return;
 
-      {/* Fecha de la venta */}
-      <div className="mb-4">
-        <label className="block mb-1">Fecha:</label>
-        <input
-          type="date"
-          value={venta.fecha_venta}
-          onChange={(e) => setVenta({ ...venta, fecha_venta: e.target.value })}
-          className="w-full p-2 border rounded"
-          required
-        />
-      </div>
+        const ventaData = {
+            id_cliente: parseInt(idCliente),
+            fecha_venta: fechaVenta,
+            metodo_pago: metodoPago,
+            detalles: detallesVenta.map(detalle => ({
+                id_repuesto: parseInt(detalle.id_repuesto),
+                cantidad: parseInt(detalle.cantidad),
+                precio_unitario: parseFloat(detalle.precio_unitario),
+                subtotal: parseFloat(detalle.subtotal)
+            })),
+            total: totalVenta
+        };
 
-      {/* Cliente */}
-      <div className="mb-4">
-        <label className="block mb-1">Cliente:</label>
-        <select
-          value={venta.id_cliente}
-          onChange={(e) => setVenta({ ...venta, id_cliente: parseInt(e.target.value) })}
-          className="w-full p-2 border rounded"
-          required
-        >
-          <option value="">Selecciona un cliente</option>
-          {clientes.map((cliente) => (
-            <option key={cliente.id_cliente} value={cliente.id_cliente}>
-              {cliente.nombre} - {cliente.contacto}
-            </option>
-          ))}
-        </select>
-      </div>
+        onSave(ventaData);
+    };
 
-      {/* Método de pago */}
-      <div className="mb-4">
-        <label className="block mb-1">Método de Pago:</label>
-        <select
-          value={venta.metodo_pago}
-          onChange={(e) => setVenta({ ...venta, metodo_pago: e.target.value })}
-          className="w-full p-2 border rounded"
-          required
-        >
-          <option value="">Selecciona un método de pago</option>
-          <option value="De contado">De contado</option>
-          <option value="A crédito">A crédito</option>
-        </select>
-      </div>
+    // Renderizado del formulario
+    return (
+        <form onSubmit={handleSubmit} className={styles.formContainer}>
+            <h2 className={styles.formTitle}>
+                {initialData ? 'Editar Venta' : 'Crear Nueva Venta'}
+            </h2>
 
-      {/* Detalles de la venta */}
-      <div className="mb-4">
-        <label className="block mb-1">Detalles de la Venta:</label>
-        {detalles.map((detalle, index) => (
-          <div key={index} className="flex gap-2 mb-2">
-            <input
-              type="number"
-              placeholder="ID Repuesto"
-              value={detalle.id_repuesto}
-              onChange={(e) =>
-                handleUpdateDetalle(index, "id_repuesto", parseInt(e.target.value))
-              }
-              className="p-2 border rounded"
-              required
-            />
-            <input
-              type="number"
-              placeholder="Cantidad"
-              value={detalle.cantidad}
-              onChange={(e) =>
-                handleUpdateDetalle(index, "cantidad", parseInt(e.target.value))
-              }
-              className="p-2 border rounded"
-              required
-            />
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Precio Unitario"
-              value={detalle.precio_unitario}
-              onChange={(e) =>
-                handleUpdateDetalle(index, "precio_unitario", parseFloat(e.target.value))
-              }
-              className="p-2 border rounded"
-              required
-            />
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Subtotal"
-              value={detalle.subtotal}
-              readOnly
-              className="p-2 border rounded bg-gray-100"
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveDetalle(index)}
-              className="bg-red-500 text-white px-2 py-1 rounded"
-            >
-              Eliminar
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={handleAddDetalle}
-          className="bg-green-500 text-white px-4 py-2 rounded mt-2"
-        >
-          Agregar Detalle
-        </button>
-      </div>
+            {/* Campos del formulario */}
+            <div className={styles.formGroup}>
+                <label htmlFor="idCliente" className={styles.label}>Cliente:</label>
+                <select
+                    id="idCliente"
+                    name="idCliente"
+                    value={idCliente}
+                    onChange={(e) => setIdCliente(e.target.value)}
+                    className={styles.selectField}
+                    required
+                >
+                    <option value="">Seleccione un Cliente</option>
+                    {clientes.map(cliente => (
+                        <option key={cliente.id_cliente} value={cliente.id_cliente}>
+                            {cliente.nombre} {cliente.apellido} ({cliente.ciudad})
+                        </option>
+                    ))}
+                </select>
+                {errorsModal.idCliente && (
+                    <p className={styles.errorModal}>{errorsModal.idCliente}</p>
+                )}
+            </div>
 
-      {/* Total */}
-      <div className="mb-4">
-        <label className="block mb-1">Total:</label>
-        <input
-          type="number"
-          step="0.01"
-          value={total}
-          readOnly
-          className="w-full p-2 border rounded bg-gray-100"
-        />
-      </div>
+            <div className={styles.formGroup}>
+                <label htmlFor="fechaVenta" className={styles.label}>Fecha de Venta:</label>
+                <input
+                    type="date"
+                    id="fechaVenta"
+                    name="fechaVenta"
+                    value={fechaVenta}
+                    onChange={(e) => setFechaVenta(e.target.value)}
+                    className={styles.inputField}
+                    required
+                />
+                {errorsModal.fechaVenta && (
+                    <p className={styles.errorModal}>{errorsModal.fechaVenta}</p>
+                )}
+            </div>
 
-      {/* Botón de guardar */}
-      <button
-        type="submit"
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        {initialData ? "Actualizar" : "Guardar"}
-      </button>
-    </form>
-  );
+            <div className={styles.formGroup}>
+                <label htmlFor="metodoPago" className={styles.label}>Método de Pago:</label>
+                <select
+                    id="metodoPago"
+                    name="metodoPago"
+                    value={metodoPago}
+                    onChange={(e) => setMetodoPago(e.target.value)}
+                    className={styles.selectField}
+                    required
+                >
+                    <option value="">Seleccione un Método de Pago</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="crédito">Crédito</option>
+                    <option value="transferencia">Transferencia</option>
+                </select>
+                {errorsModal.metodoPago && (
+                    <p className={styles.errorModal}>{errorsModal.metodoPago}</p>
+                )}
+            </div>
+
+            <h3>Detalles de la Venta:</h3>
+            {detallesVenta.map((detalle, index) => (
+                <div key={index} className={styles.detalleContainer}>
+                    <div className={styles.formGroup}>
+                        <label htmlFor={`idRepuesto-${index}`} className={styles.label}>
+                            Repuesto:
+                        </label>
+                        <select
+                            id={`idRepuesto-${index}`}
+                            name="id_repuesto"
+                            value={detalle.id_repuesto}
+                            onChange={(e) => handleRepuestoChange(index, e)}
+                            className={styles.selectField}
+                            required
+                        >
+                            <option value="">Seleccione un repuesto</option>
+                            {repuestos.map(repuesto => (
+                                <option key={repuesto.id_repuesto} value={repuesto.id_repuesto}>
+                                    {repuesto.nombre} ({repuesto.codigo})
+                                </option>
+                            ))}
+                        </select>
+                        {detalle.precio_compra !== null && (
+                            <p className={styles.precioCompra}>
+                                Precio de compra (sin IVA): ${parseFloat(detalle.precio_compra).toFixed(2)}
+                            </p>
+                        )}
+                        {errorsModal[`repuesto-${index}`] && (
+                            <p className={styles.errorModal}>{errorsModal[`repuesto-${index}`]}</p>
+                        )}
+                    </div>
+                    <div className={styles.formGroup}>
+                        <label htmlFor="porcentajeUtilidad" className={styles.label}>
+                            Porcentaje de Utilidad:
+                        </label>
+                        <select
+                            id="porcentajeUtilidad"
+                            value={porcentajeUtilidad}
+                            onChange={(e) => handlePorcentajeUtilidadChange(index, e)}
+                            className={styles.selectField}
+                        >
+                            <option value="0">Seleccione un porcentaje</option>
+                            <option value="0.10">10%</option>
+                            <option value="0.20">20%</option>
+                            <option value="0.30">30%</option>
+                        </select>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor={`cantidad-${index}`} className={styles.label}>
+                            Cantidad:
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            id={`cantidad-${index}`}
+                            name="cantidad"
+                            value={detalle.cantidad}
+                            onChange={(e) => handleCantidadChange(index, e)}
+                            className={styles.inputField}
+                            required
+                        />
+                        {errorsModal[`cantidad-${index}`] && (
+                            <p className={styles.errorModal}>{errorsModal[`cantidad-${index}`]}</p>
+                        )}
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor={`precioUnitario-${index}`} className={styles.label}>
+                            Precio Unitario:
+                        </label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            id={`precioUnitario-${index}`}
+                            name="precio_unitario"
+                            value={detalle.precio_unitario}
+                            readOnly
+                            className={styles.inputField}
+                        />
+                        {detalle.error && (
+                            <p className={styles.errorPrecio}>{detalle.error}</p>
+                        )}
+                        {errorsModal[`precio-${index}`] && !detalle.error && (
+                            <p className={styles.errorPrecio}>{errorsModal[`precio-${index}`]}</p>
+                        )}
+                        {detalle.precio_compra && (
+                            <p className={styles.precioInfo}>
+                                Precio compra: ${parseFloat(detalle.precio_compra).toFixed(2)}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor={`subtotal-${index}`} className={styles.label}>
+                            Subtotal:
+                        </label>
+                        <input
+                            type="text"
+                            id={`subtotal-${index}`}
+                            value={`$${parseFloat(detalle.subtotal || 0).toFixed(2)}`}
+                            className={styles.inputField}
+                            readOnly
+                        />
+                    </div>
+
+                    {detallesVenta.length > 1 && (
+                        <button
+                            type="button"
+                            onClick={() => eliminarDetalle(index)}
+                            className={styles.deleteButton}
+                        >
+                            Eliminar
+                        </button>
+                    )}
+                </div>
+            ))}
+
+            <div className={styles.buttonGroup}>
+                <button
+                    type="button"
+                    onClick={agregarDetalle}
+                    className={styles.submitButton}
+                >
+                    Agregar Repuesto
+                </button>
+            </div>
+
+            <div className={styles.totalContainer}>
+                <strong>Total de la Venta:</strong> ${totalVenta.toFixed(2)}
+            </div>
+
+            <div className={styles.buttonGroup}>
+                <button type="submit" className={styles.submitButton}>
+                    {initialData ? 'Actualizar Venta' : 'Crear Venta'}
+                </button>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className={styles.deleteButton}
+                >
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    );
 };
 
 export default VentaForm;

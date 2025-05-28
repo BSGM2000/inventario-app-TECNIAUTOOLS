@@ -1,36 +1,57 @@
 import { Link } from "react-router-dom";
+import styles from "../styles/NavBar.module.css";
 
 const NavBar = ({ onLogout }) => {
   return (
-    <nav className="bg-blue-600 p-4 text-white flex justify-between items-center fixed top-0 w-full z-10">
+    <nav className={styles.navBar}>
       {/* Logo e información */}
-      <div className="flex items-center space-x-4">
-        <h1 className="text-xl font-bold">Inventario TecniAutools</h1>
+      <div className={styles.logoContainer}>
+        <h1 className={styles.logo}>Inventario TecniAutools</h1>
       </div>
 
       {/* Enlaces de navegación */}
-      <div className="flex space-x-4">
+      
+      <div className={styles.navLinks}>
+        <Link
+          to="/usuarios"
+          className={styles.navLink}
+        >
+          Usuarios
+        </Link>
         <Link
           to="/repuestos"
-          className="hover:bg-blue-700 px-3 py-2 rounded transition-colors"
+          className={styles.navLink}
         >
           Repuestos
         </Link>
         <Link
           to="/clientes"
-          className="hover:bg-blue-700 px-3 py-2 rounded transition-colors"
+          className={styles.navLink}
         >
           Clientes
         </Link>
         <Link
+          to="/proveedores"
+          className={styles.navLink}
+        >
+          Proveedores
+        </Link>
+        <Link
+          to="/compras"
+          className={styles.navLink}
+        >
+          Compras
+        </Link>
+        <Link
           to="/ventas"
-          className="hover:bg-blue-700 px-3 py-2 rounded transition-colors"
+          className={styles.navLink}
         >
           Ventas
         </Link>
+        
         <button
           onClick={onLogout}
-          className="bg-red-500 px-3 py-2 rounded hover:bg-red-600 transition-colors"
+          className={styles.logoutButton}
         >
           Cerrar Sesión
         </button>

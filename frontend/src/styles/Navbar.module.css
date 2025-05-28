@@ -1,0 +1,91 @@
+.navBar {
+  background-color: #4CAF50;
+  padding: 1rem;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0; /* Aseguramos que la barra comience desde el borde izquierdo */
+  width: 100%;
+  z-index: 10;
+  margin: 0; /* Eliminamos cualquier margen que pudiera estar presente */
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: 1rem; /* Añadimos un margen izquierdo para separar del borde */
+}
+
+.logo {
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.navLinks {
+  display: flex;
+  gap: 1rem;
+  margin-right: 1rem; /* Añadimos un margen derecho para separar del borde */
+}
+
+.navLink {
+  background-color: transparent;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease-in-out;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background-color: white ;
+  color: #388E3C;
+}
+
+.logoutButton {
+  background-color: #F44336;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.15s ease-in-out;
+  cursor: pointer;
+  border: none;
+}
+
+.logoutButton:hover {
+  background-color: white;
+  color: #F44336;
+}
+
+/* Responsividad para pantallas más pequeñas */
+@media (max-width: 768px) {
+  .logoContainer {
+    margin-left: 0.5rem; /* Reducimos el margen en pantallas pequeñas */
+  }
+
+  .navLinks {
+    margin-right: 0.5rem; /* Reducimos el margen en pantallas pequeñas */
+    gap: 0.5rem; /* Reducimos el espacio entre los enlaces */
+  }
+
+  .navLink,
+  .logoutButton {
+    padding: 0.25rem 0.5rem; /* Reducimos el padding de los enlaces y el botón */
+    font-size: 0.875rem; /* Reducimos el tamaño de la fuente */
+  }
+
+  .logo {
+    font-size: 1rem; /* Reducimos el tamaño del logo */
+  }
+}
+
+/* Responsividad para pantallas aún más pequeñas */
+@media (max-width: 576px) {
+  .navLinks {
+    overflow-x: auto; /* Permite desplazar los enlaces si no caben */
+    -webkit-overflow-scrolling: touch; /* Para desplazamiento suave en iOS */
+  }
+}

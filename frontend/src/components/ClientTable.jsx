@@ -1,38 +1,43 @@
 import React from "react";
+import styles from "../styles/Table.module.css";
 
 const ClientTable = ({ clientes, onEdit, onDelete }) => {
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Lista de Clientes</h2>
-      <table className="w-full table-auto border border-gray-300">
-        <thead className="bg-gray-100">
+    <div className={styles.tableContainer}>
+      <h2 className={styles.tableTitle}>Lista de Clientes</h2>
+      <table className={styles.Table}>
+        <thead className={styles.tableHead}>
           <tr>
-            <th className="border px-4 py-2">ID</th>
-            <th className="border px-4 py-2">Nombre</th>
-            <th className="border px-4 py-2">Contacto</th>
-            <th className="border px-4 py-2">Dirección</th>
-            <th className="border px-4 py-2">Otros Datos</th>
-            <th className="border px-4 py-2">Acciones</th>
+            <th className={styles.tableHeaderCell}>Codigo Cliente</th>
+            <th className={styles.tableHeaderCell}>Nombre</th>
+            <th className={styles.tableHeaderCell}>Documento Cliente</th>
+            <th className={styles.tableHeaderCell}>Ciudad</th>
+            <th className={styles.tableHeaderCell}>Dirección</th>
+            <th className={styles.tableHeaderCell}>Teléfono</th>
+            <th className={styles.tableHeaderCell}>Correo</th>
+            <th className={styles.tableHeaderCell}>Acciones</th>
           </tr>
         </thead>
         <tbody>
           {clientes.map((c) => (
-            <tr key={c.id_cliente} className="hover:bg-gray-50">
-              <td className="border px-4 py-2 text-center">{c.id_cliente}</td>
-              <td className="border px-4 py-2">{c.nombre}</td>
-              <td className="border px-4 py-2">{c.contacto}</td>
-              <td className="border px-4 py-2">{c.direccion}</td>
-              <td className="border px-4 py-2">{c.otros_datos}</td>
-              <td className="border px-4 py-2 text-center">
+            <tr key={c.id_cliente} className={styles.tableRow}>
+              <td className={styles.tableCell} data-label="Codigo Cliente">{c.codigo_cliente}</td>
+              <td className={styles.tableCell} data-label="Nombre">{c.nombre}</td>
+              <td className={styles.tableCell} data-label="Documento">{c.documento_cliente}</td>
+              <td className={styles.tableCell} data-label="Ciudad">{c.ciudad}</td>
+              <td className={styles.tableCell} data-label="Dirección">{c.direccion}</td>
+              <td className={styles.tableCell} data-label="Teléfono">{c.telefono}</td>
+              <td className={styles.tableCell} data-label="Correo">{c.correo}</td>
+              <td className={styles.actionsCell} data-label="Acciones">
                 <button
                   onClick={() => onEdit(c)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded mr-2"
+                  className={styles.editButton}
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => onDelete(c.id_cliente)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
+                  className={styles.deleteButton}
                 >
                   Eliminar
                 </button>

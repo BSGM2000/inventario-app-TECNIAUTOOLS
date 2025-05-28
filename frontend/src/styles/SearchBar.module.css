@@ -1,0 +1,25 @@
+.searchBarContainer {
+  margin-bottom: 1rem; /* mb-4 de Tailwind (ajustado) */
+}
+
+.searchInput {
+  width: 100%; /* w-full de Tailwind */
+  padding: 0.75rem; /* p-2 de Tailwind (ajustado) */
+  border: 1px solid #ccc; /* border de Tailwind (ajustado) */
+  border-radius: 0.5rem; /* rounded-lg de Tailwind */
+  font-size: 1rem; /* Tamaño de fuente legible */
+  outline: none; /* focus:outline-none de Tailwind */
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; /* Transición suave */
+}
+
+.searchInput:focus {
+  border-color: var(--primary-green); /* focus:ring-blue-500 (adaptado a verde) */
+  box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25); /* focus:ring-blue-500 (adaptado a verde) */
+}
+
+/* Media query para pantallas más grandes (opcional: ajustar el ancho máximo) */
+@media (min-width: 768px) {
+  .searchInput {
+    max-width: 600px; /* Ancho máximo en pantallas más grandes si lo deseas */
+  }
+}

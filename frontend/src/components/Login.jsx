@@ -1,45 +1,59 @@
 import React, { useState } from "react";
+import styles from "../styles/Login.module.css"; // Asegúrate de que la ruta sea correcta
+
 
 const Login = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const token = localStorage.getItem('token');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); // Limpiar errores previos
+    setError("");
 
     try {
-      // Realizar la solicitud al backend
-      const response = await fetch("http://localhost:3000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+        console.log('Iniciando solicitud de login...');
+        const response = await fetch("http://localhost:3000/api/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, password }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Credenciales inválidas");
-      }
+        console.log('Respuesta recibida:', response);
 
-      const data = await response.json();
-      onLoginSuccess(data.token); // Llamar al callback con el token
+        const data = await response.json();
+        console.log('Datos de la respuesta:', data);
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Error en la autenticación');
+        }
+
+        if (data.success && data.data && data.data.token) {
+            console.log('Token recibido, guardando en localStorage...');
+            localStorage.setItem('token', data.data.token);
+            onLoginSuccess(data.data.token);
+        } else {
+            throw new Error(data.message || 'Error en la autenticación');
+        }
     } catch (err) {
-      setError(err.message);
+        console.error('Error en handleSubmit:', err);
+        setError(err.message || 'Error al iniciar sesión');
     }
-  };
+};
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
+    <div className={styles.loginContainer}>
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow-md w-80"
+        className={styles.loginForm}
       >
-        <h2 className="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h2>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-sm font-medium mb-1">
+        <h2 className={styles.formTitle}>Iniciar Sesión</h2>
+        {error && <p className={styles.errorMessage}>{error}</p>}
+        <div className={styles.formGroup}>
+          <label htmlFor="email" className={styles.label}>
             Correo Electrónico
           </label>
           <input
@@ -48,11 +62,11 @@ const Login = ({ onLoginSuccess }) => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 p-2 rounded"
+            className={styles.inputField}
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="password" className="block text-sm font-medium mb-1">
+        <div className={styles.formGroup}>
+          <label htmlFor="password" className={styles.label}>
             Contraseña
           </label>
           <input
@@ -61,12 +75,12 @@ const Login = ({ onLoginSuccess }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full border border-gray-300 p-2 rounded"
+            className={styles.inputField}
           />
         </div>
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+          className={styles.loginButton}
         >
           Iniciar Sesión
         </button>

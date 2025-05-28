@@ -1,0 +1,169 @@
+.formContainer {
+  background-color: var(--primary-white);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.formTitle {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: var(--secondary-text);
+  text-align: center;
+}
+
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Diseño responsivo de columnas */
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column; /* Apilar etiqueta e input verticalmente */
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+.inputField,
+.selectField {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.inputField:focus,
+.selectField:focus {
+  outline: none;
+  border-color: var(--primary-green);
+  box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+}
+
+.fileInput {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.submitButton {
+  background-color: var(--primary-green);
+  color: var(--primary-white);
+  padding: 0.75rem 1rem;
+  margin: 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.15s ease-in-out;
+  width: 100%; /* Botón ocupa todo el ancho en pantallas pequeñas */
+}
+.deleteButton {
+  background-color: #F44336; /* Rojo para el botón de eliminar */
+  color: var(--primary-white);
+  padding: 0.75rem 1rem;
+  margin: 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.submitButtonCreate {
+  background-color: var(--primary-green);
+}
+
+.submitButtonCreate:hover {
+  background-color: #388E3C;
+}
+
+.submitButtonEdit {
+  background-color: #2196F3; /* Azul para el botón de editar */
+}
+
+.submitButtonEdit:hover {
+  background-color: #1976D2;
+}
+
+/* Estilos para pantallas más grandes */
+@media (min-width: 768px) {
+  .submitButton {
+    width: auto; /* El botón se ajusta al contenido en pantallas más grandes */
+  }
+}
+
+/* Estilos para la sección de totales */
+.totalContainer {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+}
+
+.totalRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.totalRow:last-child {
+    margin-bottom: 0;
+    padding-top: 8px;
+    border-top: 1px solid #dee2e6;
+    margin-top: 8px;
+}
+
+.totalFinal {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--primary-green);
+}
+
+/* Asegurar que los inputs de solo lectura tengan un fondo gris claro */
+input:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.errorModal {
+  background-color: red;
+  color: white;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 15px;
+}
+.precioCompra {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.errorPrecio {
+  color: #dc3545;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+.precioInfo {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-style: italic;
+}

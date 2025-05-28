@@ -1,0 +1,70 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #4CAF50aa); /* Verde para el hover del logo general */
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #F44336aa); /* Rojo para el hover específico del logo de React */
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+  background-color: white; /* Fondo blanco para las tarjetas */
+  color: #333; /* Texto oscuro para contraste en las tarjetas blancas */
+  border: 1px solid #ddd; /* Borde sutil para las tarjetas */
+  border-radius: 0.5rem; /* Bordes redondeados suaves */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave para levantar las tarjetas */
+}
+
+.read-the-docs {
+  color: #4CAF50; /* Verde para el texto de "Read the docs" */
+}
+
+body {
+  background-color: #ffffff; /* Un gris claro como fondo general para no saturar con blanco */
+  color: #000000; /* Texto principal en un tono oscuro para contraste */
+  font-family: 'Montserrat', sans-serif; /* Fuente Montserrat para todo el cuerpo */
+}
+
+/* En app.css o variables.css */
+:root {
+  --primary-white: #ffffff;
+  --primary-red: #F44336;
+  --primary-green: #4CAF50;
+  --secondary-text: #333;
+  --background-light: #f4f4f4;
+  --border-color: #ccc;
+  --neutral-light: #eaeaea; /* Fondo gris claro */
+  --neutral-dark: #333; /* Texto oscuro */
+}

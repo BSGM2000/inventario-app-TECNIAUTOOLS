@@ -1,59 +1,57 @@
-// src/components/RepuestosTable.jsx
 import React from "react";
+import styles from "../styles/Table.module.css";
 
-const RepuestosTable = ({ repuestos, onEdit, onDelete }) => {
+const RepuestosTable = ({ filteredRepuestos, onEdit, onDelete}) => {
+ 
+
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Lista de Repuestos</h2>
-      <table className="w-full table-auto border border-gray-300">
-        <thead className="bg-gray-100">
+    <div className={styles.tableContainer}>
+      <h2 className={styles.tableTitle}>Lista de Repuestos</h2>
+      <table className={styles.Table}>
+        <thead className={styles.tableHead}>
           <tr>
-            <th className="border px-4 py-2">Nombre</th>
-            <th className="border px-4 py-2">Descripción</th>
-            <th className="border px-4 py-2">Precio</th>
-            <th className="border px-4 py-2">Stock</th>
-            <th className="border px-4 py-2">Categoria</th>
-            <th className="border px-4 py-2">Proveedor</th>
-            <th className="border px-4 py-2">Ubicación</th>
-            <th className="border p-0 w-[80px]">Imagen</th>
-            <th className="border px-4 py-2">Acciones</th>
+            <th className={styles.tableHeaderCell}>Nombre</th>
+            <th className={styles.tableHeaderCell}>Código</th>
+            <th className={styles.tableHeaderCell}>Descripción</th>
+            <th className={styles.tableHeaderCell}>Stock</th>
+            <th className={styles.tableHeaderCell}>Categoría</th>
+            <th className={styles.tableHeaderCell}>Proveedor</th>
+            <th className={styles.tableHeaderCell}>Ubicación</th>
+            <th className={styles.tableHeaderCell}>Imagen</th>
+            <th className={styles.tableHeaderCell}>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {repuestos.map((r) => (
-            <tr key={r.id_repuesto}>
-              <td className="border px-4 py-2 text-center">{r.nombre}</td>
-              <td className="border px-4 py-2 text-center ">{r.descripcion}</td>
-              <td className="border px-4 py-2 text-center">${r.precio.toLocaleString()}</td>
-              <td className="border px-4 py-2 text-center">{r.stock_actual}</td>
-              <td className="border px-4 py-2 text-center">{r.categoria}</td>
-              <td className="border px-4 py-2 text-center">{r.proveedor}</td>   
-              <td className="border px-4 py-2 text-center">{r.ubicacion}</td>
-              <td className="border p-0 w-[150px]">
-                <div className="w-full h-full flex items-center justify-center">
-                  {r.imagen_url ? (
-                    <img
-                      src={r.imagen_url}
-                      alt={r.nombre}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-gray-400 italic text-xs">
-                      Sin imagen
-                    </span>
-                  )}
-                </div>
+          {filteredRepuestos.map((r) => (
+            <tr key={r.id_repuesto} className={styles.tableRow}>
+              <td className={styles.tableCell} data-label="Nombre">{r.nombre || 'Sin nombre'}</td>
+              <td className={styles.tableCell} data-label="Código">{r.codigo || 'Sin código'}</td>
+              <td className={styles.tableCell} data-label="Descripción">{r.descripcion || 'Sin descripción'}</td>
+              <td className={styles.tableCell} data-label="Stock">{r.stock_actual !== undefined ? r.stock_actual : '-'}</td>
+              <td className={styles.tableCell} data-label="Categoría">{r.categoria}</td>
+              <td className={styles.tableCell} data-label="Proveedor">{r.proveedor}</td>
+              <td className={styles.tableCell} data-label="Ubicación">{r.ubicacion || 'Sin ubicación'}</td>
+              <td className={`${styles.tableCell} ${styles.imageContainer}`} data-label="Imagen">
+                {r.imagen_url ? (
+                  <img
+                    src={r.imagen_url}
+                    alt={r.nombre}
+                    className={styles.repuestoImage}
+                  />
+                ) : (
+                  <span className={styles.noImageText}>Sin imagen</span>
+                )}
               </td>
-              <td className="border px-4 py-2 text-center">
+              <td className={styles.actionsCell} data-label="Acciones">
                 <button
                   onClick={() => onEdit(r)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded mr-2"
+                  className={styles.editButton}
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => onDelete(r.id_repuesto)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
+                  className={styles.deleteButton}
                 >
                   Eliminar
                 </button>
