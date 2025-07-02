@@ -33,7 +33,7 @@ const app = express();
 // Middleware para leer JSON
 // Configuración CORS
 const corsOptions = {
-  origin: 'http://localhost:5173', // Especifica el origen exacto
+  origin: 'https://tecniautools.vercel.app', // Especifica el origen exacto
   credentials: true, // Permite el envío de credenciales
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

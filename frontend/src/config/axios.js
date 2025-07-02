@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Crear una instancia de axios con configuración por defecto
 const api = axios.create({
-    baseURL: 'http://localhost:3000/api',
+    baseURL: 'https://inventario-app-tecniautools.onrender.com/api',
     withCredentials: true
 });
 
