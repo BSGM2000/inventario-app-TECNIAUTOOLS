@@ -10,6 +10,8 @@ import ProveedoresPage from "./pages/ProveedoresPage";
 import CompraPage from "./pages/CompraPage";
 import VentaPage from "./pages/VentaPage";
 import RegistroUsuarios from "./components/RegistroUsuarios";
+import MovimientosPage from "./pages/MovimientosPage";
+import DashboardPage from "./pages/DashboardPage";
 import "./styles/App.css";
 
 function App() {
@@ -21,7 +23,7 @@ function App() {
         setIsAuthenticated(true);
         setToken(token);
         localStorage.setItem("token", token);
-        navigate("/repuestos");
+        navigate("/dashboard");
     };
 
     const handleLogout = () => {
@@ -49,6 +51,17 @@ function App() {
             <div className="p-4 mt-20" style={{ marginTop: '80px' }}>
                 <Routes>
                     <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <DashboardPage />
+                            </PrivateRoute>
+                        }
+                    />
                     <Route
                         path="/repuestos"
                         element={
@@ -112,6 +125,17 @@ function App() {
                                 onLogout={handleLogout}
                             >
                                 <VentaPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/movimientos"
+                        element={
+                            <PrivateRoute
+                                isAuthenticated={isAuthenticated}
+                                onLogout={handleLogout}
+                            >
+                                <MovimientosPage />
                             </PrivateRoute>
                         }
                     />

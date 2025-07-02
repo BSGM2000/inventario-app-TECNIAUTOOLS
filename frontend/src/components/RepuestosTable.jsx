@@ -1,47 +1,52 @@
 import React from "react";
 import styles from "../styles/Table.module.css";
+import { formatNumber } from '../config/formatNumber';
 
 const RepuestosTable = ({ filteredRepuestos, onEdit, onDelete}) => {
- 
-
   return (
     <div className={styles.tableContainer}>
       <h2 className={styles.tableTitle}>Lista de Repuestos</h2>
       <table className={styles.Table}>
         <thead className={styles.tableHead}>
           <tr>
-            <th className={styles.tableHeaderCell}>Nombre</th>
             <th className={styles.tableHeaderCell}>Código</th>
             <th className={styles.tableHeaderCell}>Descripción</th>
-            <th className={styles.tableHeaderCell}>Stock</th>
+            <th className={styles.tableHeaderCell}>Precio</th>
+            <th className={styles.tableHeaderCell}>Stock por Ubicación</th>
+            <th className={styles.tableHeaderCell}>Total</th>
             <th className={styles.tableHeaderCell}>Categoría</th>
             <th className={styles.tableHeaderCell}>Proveedor</th>
-            <th className={styles.tableHeaderCell}>Ubicación</th>
-            <th className={styles.tableHeaderCell}>Imagen</th>
             <th className={styles.tableHeaderCell}>Acciones</th>
           </tr>
         </thead>
         <tbody>
           {filteredRepuestos.map((r) => (
             <tr key={r.id_repuesto} className={styles.tableRow}>
-              <td className={styles.tableCell} data-label="Nombre">{r.nombre || 'Sin nombre'}</td>
               <td className={styles.tableCell} data-label="Código">{r.codigo || 'Sin código'}</td>
               <td className={styles.tableCell} data-label="Descripción">{r.descripcion || 'Sin descripción'}</td>
-              <td className={styles.tableCell} data-label="Stock">{r.stock_actual !== undefined ? r.stock_actual : '-'}</td>
-              <td className={styles.tableCell} data-label="Categoría">{r.categoria}</td>
-              <td className={styles.tableCell} data-label="Proveedor">{r.proveedor}</td>
-              <td className={styles.tableCell} data-label="Ubicación">{r.ubicacion || 'Sin ubicación'}</td>
-              <td className={`${styles.tableCell} ${styles.imageContainer}`} data-label="Imagen">
-                {r.imagen_url ? (
-                  <img
-                    src={r.imagen_url}
-                    alt={r.nombre}
-                    className={styles.repuestoImage}
-                  />
+              <td className={styles.tableCell} data-label="Precio"><strong>${formatNumber(r.precio) || 'Sin precio'}</strong></td>
+              <td className={styles.tableCell} data-label="Stock por Ubicación">
+                {r.stocks && r.stocks.length > 0 ? (
+                  <ul className={styles.stockList}>
+                    {JSON.parse(r.stocks).map(stock => (
+                      <li key={stock.id_ubicacion}>
+                        {stock.nombre_ubicacion}: {stock.stock_actual}
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
-                  <span className={styles.noImageText}>Sin imagen</span>
+                  'Sin stock'
                 )}
               </td>
+              <td className={styles.tableCell} data-label="Total">{r.stocks && r.stocks.length > 0 ? (
+                  <strong>${formatNumber(JSON.parse(r.stocks).reduce((total, stock) => total + stock.stock_actual * r.precio, 0))}</strong>
+                ) : (
+                  'Sin stock'
+                )}
+                
+              </td>
+              <td className={styles.tableCell} data-label="Categoría">{r.categoria}</td>
+              <td className={styles.tableCell} data-label="Proveedor">{r.proveedor}</td>
               <td className={styles.actionsCell} data-label="Acciones">
                 <button
                   onClick={() => onEdit(r)}

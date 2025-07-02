@@ -6,11 +6,12 @@ export const getAllVentas = async (req, res) => {
         const sql = `
         SELECT
             v.id_venta,
+            v.numero_factura,
             v.fecha_venta,
             v.metodo_pago,
             v.total,
             c.nombre AS cliente,
-            GROUP_CONCAT(dv.cantidad, ' x ', r.nombre SEPARATOR '; ') AS detalles
+            GROUP_CONCAT(dv.cantidad, ' x ', r.codigo SEPARATOR '; ') AS detalles
         FROM ventas v
         INNER JOIN clientes c ON v.id_cliente = c.id_cliente
         LEFT JOIN detalle_venta dv ON v.id_venta = dv.id_venta
@@ -35,6 +36,7 @@ export const getVentaById = async (req, res) => {
         const ventaSql = `
             SELECT 
                 v.id_venta,
+                v.numero_factura,
                 v.fecha_venta,
                 v.metodo_pago,
                 v.total,
@@ -62,14 +64,19 @@ export const getVentaById = async (req, res) => {
             SELECT 
                 dv.id_detalle,
                 dv.id_repuesto,
+                dv.id_ubicacion,
                 dv.cantidad,
                 dv.precio_unitario,
+                dv.precio_unitario_con_iva,
                 dv.subtotal,
+                dv.total_con_iva,
+                dv.porcentaje_utilidad,
                 r.codigo,
                 r.descripcion,
-                r.nombre as nombre_repuesto
+                s.stock_actual
             FROM detalle_venta dv
             LEFT JOIN repuestos r ON dv.id_repuesto = r.id_repuesto
+            LEFT JOIN stock_por_ubicacion s ON s.id_repuesto = dv.id_repuesto AND s.id_ubicacion = dv.id_ubicacion
             WHERE dv.id_venta = ?
         `;
         const [detalles] = await connection.query(detallesSql, [id]);
@@ -115,31 +122,39 @@ export const createVenta = async (req, res) => {
 
     const connection = await db.getConnection();
     try {
-        // Verificar stock de cada repuesto
+        // Obtener el último número de factura
+        const [ultimoNumeroResult] = await connection.query(
+            'SELECT MAX(CAST(numero_factura AS UNSIGNED)) as ultimoNumero FROM ventas'
+        );
+        const ultimoNumero = ultimoNumeroResult[0].ultimoNumero || 0;
+        const nuevoNumeroFactura = String(parseInt(ultimoNumero) + 1).padStart(6, '0');
+        // Verificar stock de cada repuesto por ubicación
         const checkStockSql = `
-            SELECT id_repuesto, stock_actual 
-            FROM repuestos 
-            WHERE id_repuesto IN (?)
+            SELECT id_repuesto, id_ubicacion, stock_actual 
+            FROM stock_por_ubicacion 
+            WHERE (id_repuesto, id_ubicacion) IN (?)
         `;
-        const repuestosIds = detalles.map(detalle => detalle.id_repuesto);
-        const [repuestosStock] = await connection.query(checkStockSql, [repuestosIds]);
+        const repuestosUbicaciones = detalles.map(detalle => [detalle.id_repuesto, detalle.id_ubicacion]);
+        const [repuestosStock] = await connection.query(checkStockSql, [repuestosUbicaciones]);
 
-        // Crear mapa de stock actual para cada repuesto
+        // Crear mapa de stock actual para cada repuesto por ubicación
         const stockMap = new Map();
         repuestosStock.forEach(repuesto => {
-            stockMap.set(repuesto.id_repuesto, repuesto.stock_actual);
+            stockMap.set(`${repuesto.id_repuesto}-${repuesto.id_ubicacion}`, repuesto.stock_actual);
         });
 
         // Verificar si hay suficiente stock para cada detalle
         const detallesSinStock = detalles.filter(detalle => {
-            const stockActual = stockMap.get(detalle.id_repuesto) || 0;
+            const stockKey = `${detalle.id_repuesto}-${detalle.id_ubicacion}`;
+            const stockActual = stockMap.get(stockKey) || 0;
             return stockActual < detalle.cantidad;
         });
 
         if (detallesSinStock.length > 0) {
             const repuestosSinStockQuery = `
-                SELECT r.id_repuesto, r.nombre, r.stock_actual 
+                SELECT r.id_repuesto, r.codigo, s.stock_actual 
                 FROM repuestos r 
+                LEFT JOIN stock_por_ubicacion s ON r.id_repuesto = s.id_repuesto AND s.id_ubicacion = ?
                 WHERE r.id_repuesto IN (?)
             `;
             const [repuestosSinStockData] = await connection.query(repuestosSinStockQuery, [
@@ -166,25 +181,25 @@ export const createVenta = async (req, res) => {
         let totalVenta = 0;
         detalles.forEach(detalle => {
             const subtotal = detalle.cantidad * detalle.precio_unitario;
-            totalVenta += subtotal;
             detalle.subtotal = subtotal;
+            totalVenta += parseFloat(detalle.total_con_iva) || 0;
         });
 
         await connection.beginTransaction();
 
         // Insertar venta principal
         const ventaSql = `
-            INSERT INTO ventas (fecha_venta, id_cliente, total, metodo_pago)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO ventas (numero_factura, fecha_venta, id_cliente, total, metodo_pago)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const [ventaResult] = await connection.query(ventaSql, [fecha_venta, id_cliente, totalVenta, metodo_pago]);
+        const [ventaResult] = await connection.query(ventaSql, [nuevoNumeroFactura, fecha_venta, id_cliente, totalVenta, metodo_pago]);
         const id_venta = ventaResult.insertId;
 
-        // Insertar detalles de la venta
-        const detallesVentaSql = `
+        // Insertar detalles de la venta    
+        const detallesVentaSql = `  
             INSERT INTO detalle_venta 
-            (id_venta, id_repuesto, cantidad, precio_unitario, subtotal)
-            VALUES (?, ?, ?, ?, ?)
+            (id_venta, id_repuesto, id_ubicacion, cantidad, precio_unitario, precio_unitario_con_iva, subtotal, total_con_iva, porcentaje_utilidad)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         for (const detalle of detalles) {
@@ -205,15 +220,19 @@ export const createVenta = async (req, res) => {
             await connection.query(detallesVentaSql, [
                 id_venta,
                 detalle.id_repuesto,
+                detalle.id_ubicacion,
                 detalle.cantidad,
                 detalle.precio_unitario,
+                detalle.precio_unitario_con_iva,
                 detalle.subtotal,
+                detalle.total_con_iva,
+                detalle.porcentaje_utilidad || 0
             ]);
 
-            // Actualizar stock del repuesto
+            // Actualizar stock del repuesto por ubicación
             await connection.query(
-                'UPDATE repuestos SET stock_actual = stock_actual - ? WHERE id_repuesto = ?',
-                [detalle.cantidad, detalle.id_repuesto]
+                'UPDATE stock_por_ubicacion SET stock_actual = stock_actual - ? WHERE id_repuesto = ? AND id_ubicacion = ?',
+                [detalle.cantidad, detalle.id_repuesto, detalle.id_ubicacion]
             );
         }
 
@@ -221,6 +240,7 @@ export const createVenta = async (req, res) => {
         res.status(201).json({ 
             message: 'Venta creada correctamente', 
             id_venta,
+            numero_factura: nuevoNumeroFactura,
             total: totalVenta
         });
     } catch (error) {
@@ -239,7 +259,7 @@ export const createVenta = async (req, res) => {
 // PUT /api/ventas/:id
 export const updateVenta = async (req, res) => {
     const { id } = req.params;
-    const { id_cliente, fecha_venta, metodo_pago, detalles } = req.body;
+    const { id_cliente, numero_factura, fecha_venta, metodo_pago, detalles } = req.body;
     let connection;
 
     try {
@@ -248,15 +268,15 @@ export const updateVenta = async (req, res) => {
 
         // 1. Obtener los detalles actuales de la venta
         const [detallesActuales] = await connection.query(
-            'SELECT id_repuesto, cantidad FROM detalle_venta WHERE id_venta = ?',
+            'SELECT id_repuesto, id_ubicacion, cantidad FROM detalle_venta WHERE id_venta = ?',
             [id]
         );
 
-        // 2. Devolver las cantidades al stock
+        // 2. Devolver las cantidades al stock por ubicación
         for (const detalle of detallesActuales) {
             await connection.query(
-                'UPDATE repuestos SET stock_actual = stock_actual + ? WHERE id_repuesto = ?',
-                [detalle.cantidad, detalle.id_repuesto]
+                'UPDATE stock_por_ubicacion SET stock_actual = stock_actual + ? WHERE id_repuesto = ? AND id_ubicacion = ?',
+                [detalle.cantidad, detalle.id_repuesto, detalle.id_ubicacion]
             );
         }
 
@@ -264,51 +284,55 @@ export const updateVenta = async (req, res) => {
         await connection.query('DELETE FROM detalle_venta WHERE id_venta = ?', [id]);
         // En el controlador, antes de actualizar la venta
         for (const detalle of detalles) {
-            // Verificar stock disponible
+            // Verificar stock disponible por ubicación
             const [repuesto] = await connection.query(
-                'SELECT stock_actual FROM repuestos WHERE id_repuesto = ?',
-                [detalle.id_repuesto]
+                'SELECT stock_actual FROM stock_por_ubicacion WHERE id_repuesto = ? AND id_ubicacion = ?',
+                [detalle.id_repuesto, detalle.id_ubicacion]
             );
 
             if (repuesto.length === 0) {
-                throw new Error(`El repuesto con ID ${detalle.id_repuesto} no existe`);
+                throw new Error(`No hay stock registrado para el repuesto ID ${detalle.id_repuesto} en la ubicación ${detalle.id_ubicacion}`);
             }
 
             if (repuesto[0].stock_actual < detalle.cantidad) {
-                throw new Error(`Stock insuficiente para el repuesto con ID ${detalle.id_repuesto}`);
+                throw new Error(`Stock insuficiente para el repuesto ID ${detalle.id_repuesto} en la ubicación ${detalle.id_ubicacion}`);
             }
         }
         // 4. Actualizar la venta principal
         await connection.query(
-            'UPDATE ventas SET id_cliente = ?, fecha_venta = ?, metodo_pago = ? WHERE id_venta = ?',
-            [id_cliente, fecha_venta, metodo_pago, id]
+            'UPDATE ventas SET id_cliente = ?, numero_factura = ?, fecha_venta = ?, metodo_pago = ? WHERE id_venta = ?',
+            [id_cliente, numero_factura, fecha_venta, metodo_pago, id]
         );
 
         // 5. Insertar los nuevos detalles y actualizar el stock
-        let totalVenta = 0;
+       let totalVenta = 0;
         
         for (const detalle of detalles) {
             // Insertar el detalle
             await connection.query(
                 `INSERT INTO detalle_venta 
-                (id_venta, id_repuesto, cantidad, precio_unitario, subtotal) 
-                VALUES (?, ?, ?, ?, ?)`,
+                (id_venta, id_repuesto, id_ubicacion, cantidad, precio_unitario, porcentaje_utilidad, precio_unitario_con_iva, subtotal, total_con_iva) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     id,
                     detalle.id_repuesto,
+                    detalle.id_ubicacion,
                     detalle.cantidad,
                     detalle.precio_unitario,
-                    detalle.subtotal
+                    detalle.porcentaje_utilidad,
+                    detalle.precio_unitario_con_iva,
+                    detalle.subtotal,
+                    detalle.total_con_iva
                 ]
             );
 
-            // Actualizar el stock
+            // Actualizar el stock por ubicación
             await connection.query(
-                'UPDATE repuestos SET stock_actual = stock_actual - ? WHERE id_repuesto = ?',
-                [detalle.cantidad, detalle.id_repuesto]
+                'UPDATE stock_por_ubicacion SET stock_actual = stock_actual - ? WHERE id_repuesto = ? AND id_ubicacion = ?',
+                [detalle.cantidad, detalle.id_repuesto, detalle.id_ubicacion]
             );
 
-            totalVenta += parseFloat(detalle.subtotal);
+            totalVenta += parseFloat(detalle.total_con_iva) || 0;
         }
 
         // 6. Actualizar el total de la venta
@@ -318,7 +342,15 @@ export const updateVenta = async (req, res) => {
         );
 
         await connection.commit();
-        res.json({ message: 'Venta actualizada correctamente' });
+        const [ventaActualizada] = await connection.query(
+            'SELECT numero_factura FROM ventas WHERE id_venta = ?',
+            [id]
+        );
+        res.json({ 
+            message: 'Venta actualizada correctamente',
+            numero_factura: ventaActualizada[0].numero_factura,
+            id_venta: id
+        });
 
     } catch (error) {
         if (connection) await connection.rollback();
@@ -341,20 +373,20 @@ export const deleteVenta = async (req, res) => {
 
         // Obtener los detalles de la venta para restaurar el stock
         const getDetallesSql = `
-            SELECT id_repuesto, cantidad 
+            SELECT id_repuesto, id_ubicacion, cantidad 
             FROM detalle_venta 
             WHERE id_venta = ?
         `;
         const [detalles] = await connection.query(getDetallesSql, [id]);
 
-        // Restaurar el stock de los repuestos
+        // Restaurar el stock de los repuestos por ubicación
         const restaurarStockSql = `
-            UPDATE repuestos 
+            UPDATE stock_por_ubicacion 
             SET stock_actual = stock_actual + ? 
-            WHERE id_repuesto = ?
+            WHERE id_repuesto = ? AND id_ubicacion = ?
         `;
         for (const detalle of detalles) {
-            await connection.query(restaurarStockSql, [detalle.cantidad, detalle.id_repuesto]);
+            await connection.query(restaurarStockSql, [detalle.cantidad, detalle.id_repuesto, detalle.id_ubicacion]);
         }
 
         // Eliminar los detalles de la venta
@@ -372,7 +404,7 @@ export const deleteVenta = async (req, res) => {
         await connection.query(deleteVentaSql, [id]);
 
         await connection.commit();
-        res.json({ message: 'Venta eliminada correctamente' });
+        res.json({ message: 'Venta eliminada correctamente', id_venta: id });
 
     } catch (error) {
         await connection.rollback();
@@ -380,5 +412,36 @@ export const deleteVenta = async (req, res) => {
         res.status(500).json({ error: error.message });
     } finally {
         connection.release();
+    }
+};
+export const obtenerUltimoNumeroFactura = async (req, res) => {
+    try {
+        // Primero verificamos si hay ventas en la base de datos
+        const [countResult] = await db.query('SELECT COUNT(*) as total FROM ventas');
+        const totalVentas = countResult[0].total;
+        
+        let ultimoNumero = 0;
+        
+        if (totalVentas > 0) {
+            // Si hay ventas, obtenemos el máximo número de factura
+            const [result] = await db.query(
+                'SELECT MAX(CAST(numero_factura AS UNSIGNED)) as ultimoNumero FROM ventas WHERE numero_factura REGEXP \'^[0-9]+$\''
+            );
+            ultimoNumero = result[0]?.ultimoNumero || 0;
+        }
+        
+        console.log('Total de ventas:', totalVentas, 'Último número de factura:', ultimoNumero);
+        
+        res.json({ 
+            success: true,
+            ultimoNumero: ultimoNumero 
+        });
+    } catch (error) {
+        console.error('Error al obtener último número de factura:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error al obtener el último número de factura',
+            error: error.message 
+        });
     }
 };

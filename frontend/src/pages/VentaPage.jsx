@@ -4,7 +4,7 @@ import VentaTable from '../components/VentaTable';
 import Modal from '../components/Modal'; // Importa tu componente Modal personalizado
 import SearchBar from '../components/SearchBar'; // Reutilizamos el SearchBar
 import styles from '../styles/VentaPage.module.css'; // Crea este archivo CSS
-import axios from 'axios';
+import api from '../config/axios';
 
 const VentaPage = () => {
         const [ventas, setVentas] = useState([]);
@@ -15,15 +15,10 @@ const VentaPage = () => {
         const [filteredVentas, setFilteredVentas] = useState([]);
         const [originalVentaDetalles, setOriginalVentaDetalles] = useState(null);
         const [errorModal, setErrorModal] = useState(null); // Estado para errores
-        const token = localStorage.getItem("token");
 
         const fetchVentas = async () => {
             try {
-                const response = await axios.get('http://localhost:3000/api/ventas', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                const response = await api.get('/ventas');
                 setVentas(response.data);
             } catch (error) {
                 console.error('Error al cargar ventas:', error);
@@ -41,6 +36,7 @@ const VentaPage = () => {
             fetchVentas();
         }, []);
 
+    
         // Manejar la búsqueda
         const handleSearch = (query) => {
             if (!query) {
@@ -58,11 +54,7 @@ const VentaPage = () => {
         
         const handleEdit = async (venta) => {
             try {
-                const response = await axios.get(`http://localhost:3000/api/ventas/${venta.id_venta}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                const response = await api.get(`/ventas/${venta.id_venta}`);
                 console.log("Detalles de la venta para editar:", response.data);
                 setVentaEnEdicionModal(response.data);
                 setOriginalVentaDetalles(response.data.detalles); // Almacena los detalles originales
@@ -84,48 +76,50 @@ const VentaPage = () => {
                     const tieneDuplicados = repuestosSeleccionados.some((id, index) => 
                         repuestosSeleccionados.indexOf(id) !== index && id !== ''
                     );
-        
+            
                     if (tieneDuplicados) {
                         setErrorModal('No se puede seleccionar el mismo repuesto más de una vez');
                         return;
                     }
-        
+            
+                    let response;
                     if (ventaEnEdicionModal) {
-                        // Solo actualizar la venta en la base de datos
-                        // El backend se encargará de actualizar el stock
-                        await axios.put(`http://localhost:3000/api/ventas/${ventaEnEdicionModal.id_venta}`, ventaData, {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                            },
-                        });
-        
-                        // Actualizar la lista local de ventas
-                        setVentas((prevVentas) =>
-                            prevVentas.map((v) =>
-                            v.id_venta === ventaEnEdicionModal.id_venta ? { ...v, ...ventaData } : v
+                        // Actualizar venta existente
+                        response = await api.put(`/ventas/${ventaEnEdicionModal.id_venta}`, ventaData);
+                        // Actualizar estado local
+                        setVentas(prevVentas => 
+                            prevVentas.map(v => v.id_venta === ventaEnEdicionModal.id_venta ? 
+                                { ...v, ...ventaData, numero_factura: response.data.numero_factura } : v
                             )
                         );
+                        setFilteredVentas(prev => 
+                            prev.map(v => v.id_venta === ventaEnEdicionModal.id_venta ? 
+                                { ...v, ...ventaData, numero_factura: response.data.numero_factura } : v
+                            )
+                        );
+                        fetchVentas();
                     } else {
-                        // Lógica para la creación de una nueva venta
-                        const res = await axios.post("http://localhost:3000/api/ventas", ventaData, {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                            },
-                        });
-                    
-                        setVentas((prevVentas) => [...prevVentas, res.data]);
-                        fetchVentas(); // Recargar ventas después de agregar una nueva
+                        // Crear nueva venta
+                        response = await api.post(`/ventas`, ventaData);
+                        // Actualizar estado local
+                        setVentas(prevVentas => [...prevVentas, response.data]);
+                        setFilteredVentas(prevFiltered => [...prevFiltered, response.data]);
+                        fetchVentas();
                     }
-        
+            
                     setModalIsOpen(false);
                     setVentaEnEdicionModal(null);
-                    setOriginalVentaDetalles(null); // Limpiar los detalles originales al guardar
-        
+                    setOriginalVentaDetalles(null);
+                    
+                    // Devolver los datos de la respuesta
+                    return response.data;
+            
                 } catch (error) {
                     console.error("Error al guardar venta:", error);
                     setErrorModal("Ocurrió un error al guardar la venta.");
+                    throw error; // Importante para que el catch en VentaForm se active
                 }
-            };
+        };
         const handleCreate = () => {
                 setVentaEnEdicionModal(null);
                 setModalIsOpen(true);
@@ -137,11 +131,7 @@ const VentaPage = () => {
         // Eliminar venta
         const confirmDelete = async () => {
             try {
-                await axios.delete(`http://localhost:3000/api/ventas/${ventaToDeleteId}`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                await api.delete(`/ventas/${ventaToDeleteId}`);
                 setVentas((prevVentas) =>
                 prevVentas.filter((v) => v.id_venta !== ventaToDeleteId)
                 );
@@ -154,11 +144,12 @@ const VentaPage = () => {
                 console.error("Error al eliminar venta:", error);
                 setErrorModal("Ocurrió un error al eliminar la venta.");
             }
-            };
+        };
         const cancelDelete = () => {
             setDeleteModalOpen(false);
             setVentaToDeleteId(null);
-            };
+        };
+        
         return (
             <div className={styles.ventaPageContainer}>
             <h1 className={styles.pageTitle}>Gestión de Ventas</h1>

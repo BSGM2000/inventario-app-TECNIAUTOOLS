@@ -5,13 +5,15 @@ import {
     getAllClients,
     createClient,
     updateClient,
-    deleteClient
+    deleteClient,
+    getClientById
   } from '../controllers/clientesController.js'; // Asegúrate de que la ruta sea correcta
 
 const router = express.Router();
 
 // Rutas para clientes
 router.get('/', verifyToken, getAllClients);
+router.get('/:id', verifyToken, getClientById);
 router.post('/', verifyToken, createClient);
 router.put('/:id', verifyToken, updateClient);
 router.delete('/:id', verifyToken, deleteClient);

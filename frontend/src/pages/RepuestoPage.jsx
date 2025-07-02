@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import api from "../config/axios";
 import RepuestoForm from "../components/RepuestoForm";
 import RepuestosTable from "../components/RepuestosTable";
 import SearchBar from "../components/SearchBar";
@@ -14,22 +14,18 @@ const RepuestoPage = () => {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false); // Estado para el modal de eliminación
     const [repuestoToDeleteId, setRepuestoToDeleteId] = useState(null); // Estado para almacenar el ID del repuesto a eliminar
     const [filteredRepuestos, setFilteredRepuestos] = useState([]);
-    const token = localStorage.getItem("token"); // Obtener el token aquí
+    
 
     const fetchRepuestos = useCallback(async () => {
         try {
-            const res = await axios.get("http://localhost:3000/api/repuestos", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            const res = await api.get("/repuestos");
             console.log('Datos de repuestos obtenidos:', res.data);
             setRepuestos(res.data);
             setFilteredRepuestos(res.data);
         } catch (error) {
             console.error("Error fetching repuestos:", error);
         }
-    }, [token]);
+    }, []);
 
 
 
@@ -78,14 +74,9 @@ const RepuestoPage = () => {
         try {
             if (repuestoEnEdicionModal) {
                 console.log('Guardando repuesto editado:', formData);
-                await axios.put(
-                    `http://localhost:3000/api/repuestos/${repuestoEnEdicionModal.id_repuesto}`,
-                    formData,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
+                await api.put(
+                    `/repuestos/${repuestoEnEdicionModal.id_repuesto}`,
+                    formData
                 );
 
                 // Actualizar la lista local de repuestos
@@ -115,11 +106,7 @@ const RepuestoPage = () => {
                 setRepuestoEnEdicionModal(null);
             } else {
                 console.log('Guardando nuevo repuesto:', formData);
-                const res = await axios.post("http://localhost:3000/api/repuestos", formData, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                const res = await api.post("/repuestos", formData);
                 console.log('Nuevo repuesto creado:', res.data);
 
                 // Actualizar la lista local de repuestos
@@ -133,7 +120,7 @@ const RepuestoPage = () => {
         } catch (error) {
             console.error('Error al guardar el repuesto:', error);
         }
-    }, [repuestoEnEdicionModal, token]);
+    }, [repuestoEnEdicionModal]);
 
     const handleCreate = () =>{
         setRepuestoEnEdicionModal(null);
@@ -149,12 +136,7 @@ const RepuestoPage = () => {
     const confirmDelete = useCallback(async () => {
         try {
             console.log('Confirmando eliminación para ID:', repuestoToDeleteId);
-            await axios.delete(`http://localhost:3000/api/repuestos/${repuestoToDeleteId}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "multipart/form-data",
-                },
-            });
+            await api.delete(`/repuestos/${repuestoToDeleteId}`);
             setRepuestos((prevRepuestos) => {
                 const updatedRepuestos = prevRepuestos.filter((r) => r.id_repuesto !== repuestoToDeleteId);
                 console.log('Estado repuestos actualizado (eliminación):', updatedRepuestos);
@@ -170,7 +152,7 @@ const RepuestoPage = () => {
             console.error("Error al eliminar repuesto:", error);
             alert("Ocurrió un error al eliminar el repuesto.");
         }
-    }, [repuestoToDeleteId, token]);
+    }, [repuestoToDeleteId]);
 
     const cancelDelete = () => {
         setDeleteModalOpen(false);
@@ -187,9 +169,41 @@ const RepuestoPage = () => {
                 <br />
                 <SearchBar onSearch={handleSearch} />
             </div>
-            <button className={styles.createButton} onClick={handleCreate}>
-                Crear Nuevo Repuesto
-            </button>
+            <div className={styles.actionButtons}>
+                <button className={styles.createButton} onClick={handleCreate}>
+                    Crear Nuevo Repuesto
+                </button>
+                <div className={styles.importContainer}>
+                    <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={async (e) => {
+                            try {
+                                const file = e.target.files[0];
+                                if (!file) return;
+
+                                const formData = new FormData();
+                                formData.append('archivo', file);
+
+                                const response = await api.post('/repuestos/importar', formData);
+                                alert(`Importación completada:\n- Exitosos: ${response.data.exitosos}\n- Fallidos: ${response.data.fallidos.length}\n- Total: ${response.data.total}`);
+                                
+                                // Recargar la lista de repuestos
+                                fetchRepuestos();
+                            } catch (error) {
+                                console.error('Error al importar:', error);
+                                alert('Error al importar el archivo. Por favor, verifica el formato del archivo.');
+                            }
+                            // Limpiar el input file
+                            e.target.value = '';
+                        }}
+                        className={styles.fileInput}
+                    />
+                    <button className={styles.importButton} onClick={() => document.querySelector('input[type="file"]').click()}>
+                        Importar desde Excel
+                    </button>
+                </div>
+            </div>
 
             {/* Tabla de repuestos (mostrar solo los filtrados) */}
             <RepuestosTable

@@ -1,0 +1,134 @@
+.formContainer {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.8em;
+}
+
+.tipoMovimientoSelector {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tipoButton {
+  padding: 10px 20px;
+  border: 2px solid #007bff;
+  background-color: transparent;
+  color: #007bff;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.tipoButton:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.tipoButton.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.formGroup label {
+  font-weight: 600;
+  color: #333;
+}
+
+.select {
+  width: 100%;
+}
+
+.selectNative {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.textarea {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 100px;
+  font-size: 1em;
+  resize: vertical;
+}
+
+.stockInfo {
+  background-color: #e9ecef;
+  padding: 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #495057;
+  text-align: center;
+}
+
+.error {
+  color: #dc3545;
+  padding: 10px;
+  background-color: #f8d7da;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.mensaje {
+  color: #28a745;
+  padding: 10px;
+  background-color: #d4edda;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.submitButton {
+  padding: 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 10px;
+}
+
+.submitButton:hover {
+  background-color: #218838;
+}
+
+.submitButton:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}

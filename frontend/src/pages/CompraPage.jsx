@@ -5,7 +5,7 @@ import CompraTable from '../components/CompraTable';
 import Modal from '../components/Modal'; // Importa tu componente Modal personalizado
 import SearchBar from '../components/SearchBar'; // Reutilizamos el SearchBar
 import styles from '../styles/CompraPage.module.css'; // Crea este archivo CSS
-import axios from 'axios';
+import api from '../config/axios';
 
 const CompraPage = () => {
     const [compras, setCompras] = useState([]);
@@ -20,11 +20,7 @@ const CompraPage = () => {
     
     const fetchCompras = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/compras', {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            const response = await api.get('/compras');
             setCompras(response.data);
         } catch (error) {
             console.error('Error al cargar compras:', error);
@@ -58,11 +54,7 @@ const CompraPage = () => {
     
     const handleEdit = async (compra) => {
     try {
-        const response = await axios.get(`http://localhost:3000/api/compras/${compra.id_compra}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        const response = await api.get(`/compras/${compra.id_compra}`);
         console.log("Detalles de la compra para editar:", response.data);
         setCompraEnEdicionModal(response.data);
         setOriginalCompraDetalles(response.data.detalles); // Almacena los detalles originales
@@ -96,11 +88,7 @@ const CompraPage = () => {
             if (compraEnEdicionModal) {
                 // Solo actualizar la compra en la base de datos
                 // El backend se encargará de actualizar el stock
-                await axios.put(`http://localhost:3000/api/compras/${compraEnEdicionModal.id_compra}`, compraData, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                await api.put(`/compras/${compraEnEdicionModal.id_compra}`, compraData);
 
                 // Actualizar la lista local de compras
                 setCompras((prevCompras) =>
@@ -111,11 +99,7 @@ const CompraPage = () => {
                 fetchCompras();
             } else {
                 // Lógica para la creación de una nueva compra
-                const res = await axios.post("http://localhost:3000/api/compras", compraData, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+                const res = await api.post("/compras", compraData);
                 setCompras((prevCompras) => [...prevCompras, res.data]);
                 fetchCompras();
             }
@@ -143,11 +127,7 @@ const CompraPage = () => {
   // Eliminar compra
     const confirmDelete = async () => {
     try {
-        await axios.delete(`http://localhost:3000/api/compras/${compraToDeleteId}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        await api.delete(`/compras/${compraToDeleteId}`);
         setCompras((prevCompras) =>
         prevCompras.filter((c) => c.id_compra !== compraToDeleteId)
         );

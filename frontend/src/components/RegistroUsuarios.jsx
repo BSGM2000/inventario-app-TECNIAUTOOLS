@@ -1,8 +1,8 @@
 // frontend/src/components/RegistroUsuarios.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import styles from '../styles/Form.module.css';
+import modalStyles from '../styles/Modal.module.css';
+import api from '../config/axios';
 
 const RegistroUsuarios = () => {
     const [formData, setFormData] = useState({
@@ -10,11 +10,11 @@ const RegistroUsuarios = () => {
         password: '',
         confirm_password: '',
         nombre: '',
-        currentPassword: ''
+        currentUserEmail: '',
+        currentUserPassword: ''
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const navigate = useNavigate();
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -35,13 +35,7 @@ const RegistroUsuarios = () => {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.post('http://localhost:3000/api/auth/register', formData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            await api.post('/auth/register', formData);
             
             setSuccess('Usuario registrado exitosamente');
             // Limpiar formulario
@@ -50,7 +44,8 @@ const RegistroUsuarios = () => {
                 password: '',
                 confirm_password: '',
                 nombre: '',
-                currentPassword: ''
+                currentUserEmail: '',
+                currentUserPassword: ''
             });
         } catch (err) {
             console.error('Error completo al registrar usuario:', {
@@ -59,15 +54,19 @@ const RegistroUsuarios = () => {
                 message: err.message,
                 config: err.config
             });
-            setError(err.response?.data?.error || 'Error al registrar el usuario. Verifica la consola para más detalles.');
+            if (err.response?.status === 401) {
+                setError('Las credenciales del usuario actual son incorrectas. Por favor, verifica tu correo y contraseña.');
+            } else {
+                setError(err.response?.data?.message || 'Error al registrar el usuario. Por favor, intenta nuevamente.');
+            }
         }
     };  
 
     return (
         <div className={styles.formContainer}>
             <h2 className={styles.formTitle}>Registrar Nuevo Usuario</h2>
-            {error && <div className={styles.errorModal}>{error}</div>}
-            {success && <div className={styles.successModal}>{success}</div>}
+            {error && <div className={modalStyles.errorModal}>{error}</div>}
+            {success && <div className={modalStyles.successModal}>{success}</div>}
             
             <form onSubmit={handleSubmit}>
                 <div className={styles.formGroup}>
@@ -124,13 +123,27 @@ const RegistroUsuarios = () => {
                 </div>
 
                 <div className={styles.formGroup}>
-                    <label htmlFor="currentPassword" className={styles.label}>Tu Contraseña Actual</label>
+                    <label htmlFor="currentUserEmail" className={styles.label}>Tu Correo Actual</label>
+                    <input
+                        type="email"
+                        className={styles.inputField}
+                        id="currentUserEmail"
+                        name="currentUserEmail"
+                        value={formData.currentUserEmail}
+                        onChange={handleChange}
+                        required
+                    />
+                    <div className={styles.label}>Ingresa tu correo actual para confirmar el registro</div>
+                </div>
+
+                <div className={styles.formGroup}>
+                    <label htmlFor="currentUserPassword" className={styles.label}>Tu Contraseña Actual</label>
                     <input
                         type="password"
                         className={styles.inputField}
-                        id="currentPassword"
-                        name="currentPassword"
-                        value={formData.currentPassword}
+                        id="currentUserPassword"
+                        name="currentUserPassword"
+                        value={formData.currentUserPassword}
                         onChange={handleChange}
                         required
                     />

@@ -1,21 +1,25 @@
 // src/components/CompraForm.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import styles from '../styles/Form.module.css';
-import axios from 'axios';
-// Función para formatear números con separadores de miles
-const formatNumber = (number) => {
-    return new Intl.NumberFormat('es-CO').format(Number(number).toFixed(2));
-};
+import Select from 'react-select';
+import makeAnimated from 'react-select/animated';
+import api from '../config/axios';
+import { formatNumber } from '../config/formatNumber';
+
 const CompraForm = ({ initialData, onSave, onClose }) => {
+    const token = localStorage.getItem("token");
     const [proveedores, setProveedores] = useState([]);
     const [repuestos, setRepuestos] = useState([]);
+    const [ubicaciones, setUbicaciones] = useState([]);
     const [detallesCompra, setDetallesCompra] = useState([{ 
         id_repuesto: '', 
         cantidad: '', 
         precio_compra_sin_iva: '', 
         iva: '0.00', 
-        precio_compra_con_iva: '0.00' 
+        precio_compra_con_iva: '0.00',
+        id_ubicacion: '' 
     }]);
+    const [ubicacionesOptions, setUbicacionesOptions] = useState([]);
     const [fechaCompra, setFechaCompra] = useState('');
     const [numeroFactura, setNumeroFactura] = useState('');
     const [idProveedor, setIdProveedor] = useState('');
@@ -23,7 +27,11 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
     const [totalSinIva, setTotalSinIva] = useState(0);
     const [totalIva, setTotalIva] = useState(0);
     const [totalConIva, setTotalConIva] = useState(0);
-    const token = localStorage.getItem("token");
+    const [proveedoresOptions, setProveedoresOptions] = useState([]);
+    const [repuestosOptions, setRepuestosOptions] = useState([]);
+    const [idRepuesto, setIdRepuesto] = useState('');
+    const animatedComponents = makeAnimated();
+    
 
     // Función para calcular los totales basados en los detalles actuales
     const calcularTotales = useCallback((detalles) => {
@@ -58,18 +66,42 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
     // Cargar datos iniciales
     useEffect(() => {
         // Cargar proveedores
-        axios.get('http://localhost:3000/api/proveedores', {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(response => setProveedores(response.data))
-        .catch(error => console.error('Error al cargar proveedores:', error));
+        const cargarDatosIniciales = async () => {
+        try {
+            const [proveedoresRes, repuestosRes, ubicacionesRes] = await Promise.all([
+                api.get('/proveedores'),
+                api.get('/repuestos'),
+                api.get('/ubicaciones')
+            ]);
+            setProveedores(proveedoresRes.data);
+            setRepuestos(repuestosRes.data);
+            setUbicaciones(ubicacionesRes.data);
+        
 
-        // Cargar repuestos
-        axios.get('http://localhost:3000/api/repuestos', {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(response => setRepuestos(response.data))
-        .catch(error => console.error('Error al cargar repuestos:', error));
+        //Transformar los repuestos al formato react-select;
+        const proveedoresOptions = proveedoresRes.data.map(proveedor => {
+            return {    
+                value: proveedor.id_proveedor,
+                label: `${proveedor.nombre}-${proveedor.empresa}`,
+            }
+        });
+        setProveedoresOptions(proveedoresOptions);
+        const repuestosOptions = repuestosRes.data.map(repuesto => {
+            return {    
+                value: repuesto.id_repuesto,
+                label: `${repuesto.codigo} - (${repuesto.descripcion})`,
+                codigo: repuesto.codigo
+            }
+        });
+        setRepuestosOptions(repuestosOptions);
+
+        const ubicacionesOptions = ubicacionesRes.data.map(ubicacion => {
+            return {
+                value: ubicacion.id_ubicacion,
+                label: ubicacion.nombre
+            }
+        });
+        setUbicacionesOptions(ubicacionesOptions);
 
         // Precargar datos si se está editando una compra
         if (initialData) {
@@ -92,7 +124,8 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                 cantidad: '', 
                 precio_compra_sin_iva: '', 
                 iva: '0.00', 
-                precio_compra_con_iva: '0.00' 
+                precio_compra_con_iva: '0.00',
+                id_ubicacion: '' 
             }]);
         } else {
             setIdProveedor('');
@@ -106,6 +139,10 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                 precio_compra_con_iva: '0.00' 
             }]);
         }
+    } catch (error) {
+        console.error('Error al cargar datos:', error);
+    }}
+    cargarDatosIniciales();
     }, [initialData, token]);
 
     // Actualizar totales cuando cambian los detalles
@@ -123,14 +160,38 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
             repuestosSeleccionados.indexOf(id) !== index && id !== ''
         );
     };
-
+    const getSelectedValueProveedor = (idProveedor) => {
+        if (!idProveedor) {
+            console.log('getSelectedValueProveedor: ID de proveedor no proporcionado');
+            return null;
+        }
+        // Asegurarse de comparar strings
+        return proveedoresOptions.find(option => 
+            option.value.toString() === idProveedor.toString()
+        ) || null;
+    };
+    const handleIdProveedorChange = (selectedOption) => {
+        setIdProveedor(selectedOption ? selectedOption.value : '');
+    };
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         if (name === 'idProveedor') setIdProveedor(value);
         if (name === 'fechaCompra') setFechaCompra(value);
         if (name === 'numeroFactura') setNumeroFactura(value);
     };
-
+    const handleIdRepuestoChange = (selectedOption) => {
+        setIdRepuesto(selectedOption ? selectedOption.value : '');
+    };
+    const getSelectedValueRepuesto = (idRepuesto) => {
+        if (!idRepuesto) {
+            console.log('getSelectedValueRepuesto: ID de repuesto no proporcionado');
+            return null;
+        }
+        // Asegurarse de comparar strings
+        return repuestosOptions.find(option => 
+            option.value.toString() === idRepuesto.toString()
+        ) || null;
+    };
     const handleDetalleChange = (index, event) => {
         const { name, value } = event.target;
         const newDetalles = [...detallesCompra];
@@ -166,15 +227,6 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
             currentDetalle.iva = Math.round(iva * 100) / 100; // Redondear a 2 decimales
             currentDetalle.precio_compra_con_iva = Math.round((precioSinIva + iva) * cantidad * 100) / 100;
         }
-        else if (name === 'id_repuesto' && value) {
-            currentDetalle.id_repuesto = value;
-            // Si cambia el repuesto, buscar su información
-            const repuestoSeleccionado = repuestos.find(r => r.id_repuesto === value);
-            if (repuestoSeleccionado) {
-                currentDetalle.codigo_repuesto = repuestoSeleccionado.codigo;
-                currentDetalle.descripcion_repuesto = repuestoSeleccionado.descripcion;
-            }
-        }
 
         newDetalles[index] = currentDetalle;
 
@@ -198,7 +250,58 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
 
         setDetallesCompra(newDetalles);
     };
+    const handleRepuestoChange = (selectedOption, actionMeta) => {
+        if (!actionMeta) return;
+        
+        const { action } = actionMeta;
+        const index = actionMeta.name ? parseInt(actionMeta.name.split('-')[1], 10) : 0;
+        
+        if (action === 'select-option' && selectedOption) {
+            const newDetalles = [...detallesCompra];
+            const repuestoSeleccionado = repuestos.find(r => r.id_repuesto === selectedOption.value);
+            
+            newDetalles[index] = {
+                ...newDetalles[index],
+                id_repuesto: selectedOption.value,
+                codigo_repuesto: repuestoSeleccionado?.codigo || '',
+                descripcion_repuesto: repuestoSeleccionado?.descripcion || '',
+                cantidad: newDetalles[index].cantidad || '',
+                precio_compra_sin_iva: newDetalles[index].precio_compra_sin_iva || '',
+                iva: '0.00',
+                precio_compra_con_iva: '0.00'
+            };
 
+            // Validar repuestos duplicados
+            const tieneDuplicados = verificarRepuestosDuplicados(newDetalles);
+            if (tieneDuplicados) {
+                setErrorsModal(prev => ({
+                    ...prev,
+                    [`id_repuesto-${index}`]: 'Este repuesto ya está seleccionado en otro detalle'
+                }));
+            } else {
+                setErrorsModal(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors[`id_repuesto-${index}`];
+                    return newErrors;
+                });
+            }
+            
+            setDetallesCompra(newDetalles);
+        } else if (action === 'clear') {
+            // Limpiar la selección
+            const newDetalles = [...detallesCompra];
+            newDetalles[index] = {
+                ...newDetalles[index],
+                id_repuesto: '',
+                codigo_repuesto: '',
+                descripcion_repuesto: '',
+                precio_compra_sin_iva: '',
+                iva: '0.00',
+                precio_compra_con_iva: '0.00'
+            };
+            setDetallesCompra(newDetalles);
+        }
+    };
     const agregarDetalle = () => {
         setDetallesCompra([...detallesCompra, { 
             id_repuesto: '', 
@@ -278,7 +381,8 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                 cantidad: parseFloat(detalle.cantidad),
                 precio_compra_sin_iva: parseFloat(detalle.precio_compra_sin_iva),
                 iva: parseFloat(detalle.iva),
-                precio_compra_con_iva: parseFloat(detalle.precio_compra_con_iva)
+                precio_compra_con_iva: parseFloat(detalle.precio_compra_con_iva),
+                id_ubicacion: detalle.id_ubicacion
             }))
         };
         onSave(compraData);
@@ -288,22 +392,27 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
     return (
         <form onSubmit={handleSubmit} className={styles.formContainer}>
             <div className={styles.formGroup}>
-                <label htmlFor="proveedor" className={styles.label}>Proveedor:</label>
-                <select
-                    id="proveedor"
+                <label htmlFor="idproveedor" className={styles.label}>Proveedor:</label>
+                <Select
+                    id="idproveedor"
                     name="idProveedor"
-                    value={idProveedor}
-                    onChange={handleInputChange}
-                    className={styles.selectField}
+                    value={getSelectedValueProveedor(idProveedor)}
+                    onChange={handleIdProveedorChange}
+                    options={proveedoresOptions}
+                    placeholder="Buscar proveedor..."
+                    noOptionsMessage={() => "No se encontraron proveedores"}
+                    isSearchable
+                    className="basic-single"
+                    classNamePrefix="select"
+                    loadingMessage={() => "Buscando..."}
+                    isLoading={proveedoresOptions.length === 0}
+                    filterOption={(option, inputValue) => 
+                        option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
+                        option.codigo?.toLowerCase().includes(inputValue.toLowerCase())
+                    }
+                    isClearable
                     required
-                >
-                    <option value="">Seleccione un proveedor</option>
-                    {proveedores.map(proveedor => (
-                        <option key={proveedor.id_proveedor} value={proveedor.id_proveedor}>
-                            {proveedor.nombre} ({proveedor.empresa})
-                        </option>
-                    ))}
-                </select>
+                />
                 {errorsModal.idProveedor && <span className={styles.error}>{errorsModal.idProveedor}</span>}
             </div>
 
@@ -330,7 +439,7 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                     value={numeroFactura}
                     onChange={handleInputChange}
                     className={styles.inputField}
-                    placeholder="Opcional"
+                    placeholder="Obligatorio"
                 />
             </div>
 
@@ -339,21 +448,26 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                 <div key={index} className={styles.detalleContainer}>
                     <div className={styles.formGroup}>
                         <label htmlFor={`repuesto-${index}`} className={styles.label}>Repuesto:</label>
-                        <select
+                        <Select
                             id={`repuesto-${index}`}
-                            name="id_repuesto"
-                            value={detalle.id_repuesto}
-                            onChange={(e) => handleDetalleChange(index, e)}
-                            className={styles.selectField}
+                            name={`repuesto-${index}`}
+                            value={getSelectedValueRepuesto(detalle.id_repuesto)}
+                            onChange={handleRepuestoChange}
+                            options={repuestosOptions}
+                            components={animatedComponents}
+                            placeholder="Seleccione un repuesto"
+                            noOptionsMessage={() => "No se encontraron coincidencias"}
+                            isSearchable
+                            className="basic-multi-select"
+                            classNamePrefix="select"
+                            loadingMessage={() => "Buscando..."}
+                            isLoading={repuestosOptions.length === 0}
+                            filterOption={(option, inputValue) => 
+                                option.label.toLowerCase().includes(inputValue.toLowerCase())
+                            }
+                            isClearable
                             required
-                        >
-                            <option value="">Seleccione un repuesto</option>
-                            {repuestos.map(repuesto => (
-                                <option key={repuesto.id_repuesto} value={repuesto.id_repuesto}>
-                                    {repuesto.nombre}
-                                </option>
-                            ))}
-                        </select>
+                        />
                         {errorsModal[`id_repuesto-${index}`] && (
                             <span className={styles.error}>{errorsModal[`id_repuesto-${index}`]}</span>
                         )}
@@ -392,10 +506,10 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                     <div className={styles.formGroup}>
                         <label htmlFor={`iva-${index}`} className={styles.label}>IVA (19%):</label>
                         <input
-                            type="number"
+                            type="text"
                             id={`iva-${index}`}
                             name="iva"
-                            value={detalle.iva}
+                            value={formatNumber(detalle.iva)}
                             className={styles.inputField}
                             disabled
                         />
@@ -404,12 +518,36 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
                     <div className={styles.formGroup}>
                         <label htmlFor={`total-${index}`} className={styles.label}>Total con IVA:</label>
                         <input
-                            type="number"
+                            type="text"
                             id={`total-${index}`}
                             name="precio_compra_con_iva"
-                            value={detalle.precio_compra_con_iva}
+                            value={formatNumber(detalle.precio_compra_con_iva)}
                             className={styles.inputField}
                             disabled
+                        />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                        <label htmlFor={`ubicacion-${index}`} className={styles.label}>Ubicación Destino:</label>
+                        <Select
+                            id={`ubicacion-${index}`}
+                            name={`ubicacion-${index}`}
+                            value={ubicacionesOptions.find(option => option.value === detalle.id_ubicacion)}
+                            onChange={(selectedOption) => {
+                                const newDetalles = [...detallesCompra];
+                                newDetalles[index] = {
+                                    ...newDetalles[index],
+                                    id_ubicacion: selectedOption ? selectedOption.value : ''
+                                };
+                                setDetallesCompra(newDetalles);
+                            }}
+                            options={ubicacionesOptions}
+                            placeholder="Seleccione una ubicación"
+                            noOptionsMessage={() => "No se encontraron ubicaciones"}
+                            isSearchable
+                            className="basic-single"
+                            classNamePrefix="select"
+                            required
                         />
                     </div>
 
@@ -438,15 +576,15 @@ const CompraForm = ({ initialData, onSave, onClose }) => {
             <div className={styles.totalContainer}>
                 <div className={styles.totalRow}>
                     <span>Subtotal (sin IVA):</span>
-                    <span>${totalSinIva}</span>
+                    <span>{formatNumber(totalSinIva)}</span>
                 </div>
                 <div className={styles.totalRow}>
                     <span>IVA (19%):</span>
-                    <span>${totalIva}</span>
+                    <span>{formatNumber(totalIva)}</span>
                 </div>
                 <div className={`${styles.totalRow} ${styles.totalFinal}`}>
                     <strong>Total (con IVA):</strong>
-                    <strong>${totalConIva}</strong>
+                    <strong>{formatNumber(totalConIva)}</strong>
                 </div>
             </div>
 

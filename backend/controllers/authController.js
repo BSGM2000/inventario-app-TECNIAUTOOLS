@@ -87,11 +87,28 @@ export const login = async (req, res) => {
 // Controlador de registro
 export const register = async (req, res) => {
     try {
-        const { email, password, nombre } = req.body;
+        const { email, password, nombre, currentUserEmail, currentUserPassword } = req.body;
 
         // Validar entrada
-        if (!email || !password || !nombre) {
+        if (!email || !password || !nombre || !currentUserEmail || !currentUserPassword) {
             return createErrorResponse(res, 400, 'Todos los campos son requeridos');
+        }
+
+        // Verificar credenciales del usuario actual
+        const [currentUsers] = await db.query(
+            'SELECT id_usuario, email, password FROM usuarios WHERE email = ?',
+            [currentUserEmail]
+        );
+
+        if (!currentUsers.length) {
+            return createErrorResponse(res, 401, 'Usuario actual no encontrado');
+        }
+
+        const currentUser = currentUsers[0];
+        const isCurrentPasswordValid = await bcrypt.compare(currentUserPassword, currentUser.password);
+
+        if (!isCurrentPasswordValid) {
+            return createErrorResponse(res, 401, 'Credenciales del usuario actual inválidas');
         }
 
         // Verificar si el usuario ya existe

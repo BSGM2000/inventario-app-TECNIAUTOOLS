@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../config/axios";
 import ClientForm from "../components/ClientForm";
 import ClientTable from "../components/ClientTable";
 import styles from "../styles/ClientPage.module.css"; // Asegúrate de crear este archivo CSS
@@ -17,11 +17,7 @@ const ClientPage = () => {
 
   const fetchClientes = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/clientes", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await api.get("/clientes");
       setClientes(res.data);
       setFilteredClientes(res.data); // Asegúrate de inicializar filteredClientes aquí también
     } catch (error) {
@@ -70,14 +66,9 @@ const handleSaveModal = async (clientData) => {
   try {
     if (clienteEnEdicionModal) {
       // Actualizar cliente existente
-      await axios.put(
-        `http://localhost:3000/api/clientes/${clienteEnEdicionModal.id_cliente}`,
-        clientData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.put(
+        `/clientes/${clienteEnEdicionModal.id_cliente}`,
+        clientData
       );
       // Actualizar la lista local de clientes
       setClientes((prevClientes) =>
@@ -87,11 +78,7 @@ const handleSaveModal = async (clientData) => {
       );
     } else {
       // Crear nuevo cliente
-      const res = await axios.post("http://localhost:3000/api/clientes", clientData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await api.post("/clientes", clientData);
       // Actualizar la lista local de clientes con el nuevo cliente
       fetchClientes(); // Recargar clientes después de agregar uno nuevo
       setClientes((prevClientes) => [...prevClientes, res.data]);
@@ -116,11 +103,7 @@ const handleSaveModal = async (clientData) => {
 };
 const confirmDelete = async () => {
   try {
-    await axios.delete(`http://localhost:3000/api/clientes/${clienteToDeleteId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    await api.delete(`/clientes/${clienteToDeleteId}`);
     setClientes((prevClientes) =>
       prevClientes.filter((c) => c.id_cliente !== clienteToDeleteId)
     );

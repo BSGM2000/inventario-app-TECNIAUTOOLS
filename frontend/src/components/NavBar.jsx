@@ -13,6 +13,12 @@ const NavBar = ({ onLogout }) => {
       
       <div className={styles.navLinks}>
         <Link
+          to="/dashboard"
+          className={styles.navLink}
+        >
+          Dashboard
+        </Link>
+        <Link
           to="/usuarios"
           className={styles.navLink}
         >
@@ -47,6 +53,12 @@ const NavBar = ({ onLogout }) => {
           className={styles.navLink}
         >
           Ventas
+        </Link>
+        <Link
+          to="/movimientos"
+          className={styles.navLink}
+        >
+          Movimientos
         </Link>
         
         <button

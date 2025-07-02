@@ -1,49 +1,64 @@
 // src/components/RepuestoForm.jsx
-import { useRef, useState, useEffect } from "react";
-import styles from "../styles/Form.module.css"; // Asegúrate de que la ruta sea correcta
-import axios from "axios";
+import { useState, useEffect } from "react";
+import styles from "../styles/Form.module.css";
+import api from "../config/axios";
+import Select from 'react-select';
 
 const RepuestoForm = ({ repuestoEnEdicionModal, handleSaveModal, onClose }) => {
-  const fileInputRef = useRef();
   const [form, setForm] = useState({
-    nombre: "",
     codigo: "",
     descripcion: "",
-    stock_actual: "",
-    ubicacion: "",
+    precio: "",
     id_categoria: "",
     id_proveedor: "",
-    imagen: null,
+    stocks: []
   });
 
   const [categorias, setCategorias] = useState([]);
+  const [categoriasOptions, setCategoriasOptions] = useState([]);
+  const [idCategoria, setIdCategoria] = useState('');
   const [proveedores, setProveedores] = useState([]);
+  const [proveedoresOptions, setProveedoresOptions] = useState([]);
+  const [idProveedor, setIdProveedor] = useState('');
+  const [ubicaciones, setUbicaciones] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const token = localStorage.getItem("token");
 
-  // 1. Cargar categorías y proveedores al montar
+  // Cargar categorías, proveedores y ubicaciones al montar
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [catRes, provRes] = await Promise.all([
-          axios.get("http://localhost:3000/api/categorias", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("http://localhost:3000/api/proveedores", { headers: { Authorization: `Bearer ${token}` } }),
+        const [catRes, provRes, ubiRes] = await Promise.all([
+          api.get("/categorias"),
+          api.get("/proveedores"),
+          api.get("/ubicaciones")
         ]);
         setCategorias(catRes.data);
         setProveedores(provRes.data);
+        setUbicaciones(ubiRes.data);
+        //Options del Select de categorias
+        const categoriasOptions = catRes.data.map(cat =>({
+          value: cat.id_categoria,
+          label: cat.nombre
+        }));
+        setCategoriasOptions(categoriasOptions);
+        ////Options del Select de proveedores
+        const proveedoresOptions = provRes.data.map(prov => ({
+          value: prov.id_proveedor,
+          label: `${prov.nombre} (${prov.empresa || ""})`
+        }));
+        setProveedoresOptions(proveedoresOptions);
         
         // Si hay un repuesto en edición, precargar después de cargar las listas
         if (repuestoEnEdicionModal) {
+          const stocks = JSON.parse(repuestoEnEdicionModal.stocks || '[]');
           setForm({
-            nombre: repuestoEnEdicionModal.nombre,
             codigo: repuestoEnEdicionModal.codigo || "",
             descripcion: repuestoEnEdicionModal.descripcion || "",
-            stock_actual: repuestoEnEdicionModal.stock_actual || "",
-            ubicacion: repuestoEnEdicionModal.ubicacion || "",
             id_categoria: repuestoEnEdicionModal.id_categoria || "",
             id_proveedor: repuestoEnEdicionModal.id_proveedor || "",
-            imagen: null,
+            stocks: stocks
           });
         }
       } catch (error) {
@@ -53,42 +68,34 @@ const RepuestoForm = ({ repuestoEnEdicionModal, handleSaveModal, onClose }) => {
       }
     };
     fetchData();
-  }, [repuestoEnEdicionModal, token]); // Agregar token como dependencia
+  }, [repuestoEnEdicionModal, token]);
 
-  // 2. Precargar el formulario al cambiar el repuesto en edición
-  useEffect(() => {
-    if (repuestoEnEdicionModal) {
-      // Solo precargar si ya tenemos las listas cargadas
-      if (categorias.length > 0 && proveedores.length > 0) {
-        setForm({
-          nombre: repuestoEnEdicionModal.nombre,
-          codigo: repuestoEnEdicionModal.codigo || "",
-          descripcion: repuestoEnEdicionModal.descripcion || "",
-          stock_actual: repuestoEnEdicionModal.stock_actual || "",
-          ubicacion: repuestoEnEdicionModal.ubicacion || "",
-          id_categoria: repuestoEnEdicionModal.id_categoria || "",
-          id_proveedor: repuestoEnEdicionModal.id_proveedor || "",
-          imagen: null,
-        });
-      }
-    } else {
-      setForm({
-        nombre: "",
-        codigo: "",
-        descripcion: "",
-        stock_actual: "",
-        ubicacion: "",
-        id_categoria: "",
-        id_proveedor: "",
-        imagen: null,
-      });
-      if (fileInputRef.current) {
-        fileInputRef.current.value = null;
-      }
+  const getSelectedValueCategoria = (idCategoria) =>{
+    if (!idCategoria) {
+      return null;
     }
-  }, [repuestoEnEdicionModal, categorias, proveedores]);
+    // Asegurarse de comparar strings
+    return categoriasOptions.find(option => 
+        option.value.toString() === idCategoria.toString()
+    ) || null;
+  };
+  const handleIdCategoriaChange = (selectedOption) => {
+    setIdCategoria(selectedOption ? selectedOption.value : '');
+  };
 
-  //HandleChange para archivos
+  const getSelectedValueProveedor = (idProveedor) => {
+    if (!idProveedor) {
+        return null;
+    }
+    // Asegurarse de comparar strings
+    return proveedoresOptions.find(option => 
+        option.value.toString() === idProveedor.toString()
+    ) || null;
+  };
+  const handleIdProveedorChange = (selectedOption) => {
+    setIdProveedor(selectedOption ? selectedOption.value : '');
+  };
+
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
     setForm({
@@ -97,41 +104,42 @@ const RepuestoForm = ({ repuestoEnEdicionModal, handleSaveModal, onClose }) => {
     });
   };
 
+  const handleStockChange = (ubicacionId, value) => {
+    const stockValue = value === "" ? 0 : parseInt(value);
+    setForm(prev => {
+      const newStocks = [...prev.stocks];
+      const stockIndex = newStocks.findIndex(s => s.id_ubicacion === ubicacionId);
+      
+      if (stockIndex >= 0) {
+        newStocks[stockIndex] = { ...newStocks[stockIndex], stock_actual: stockValue };
+      } else {
+        newStocks.push({ id_ubicacion: ubicacionId, stock_actual: stockValue });
+      }
+      
+      return { ...prev, stocks: newStocks };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append("nombre", form.nombre);
     formData.append("codigo", form.codigo);
     formData.append("descripcion", form.descripcion);
-    formData.append("stock_actual", isNaN(parseInt(form.stock_actual)) ? 0 : parseInt(form.stock_actual));
-    formData.append("ubicacion", form.ubicacion);
-    formData.append("id_categoria", form.id_categoria);
-    formData.append("id_proveedor", form.id_proveedor);
+    formData.append("precio", form.precio);
+    formData.append("id_categoria", idCategoria);
+    formData.append("id_proveedor", idProveedor);
+    formData.append("stocks", JSON.stringify(form.stocks));
 
-    // Agregar la imagen si se selecciona una nueva
-    if (fileInputRef.current && fileInputRef.current.files.length > 0) {
-      formData.append("imagen", fileInputRef.current.files[0]);
-    }
-
-    console.log("FormData antes de enviar:", Array.from(formData.entries()));
-
-    // Llamar a la función de guardar que viene del padre
     handleSaveModal(formData);
 
-    // Limpiar el formulario después de guardar (el padre se encargará de cerrar el modal)
     setForm({
-      nombre: "",
       codigo: "",
       descripcion: "",
-      stock_actual: "",
-      ubicacion: "",
+      precio: "",
       id_categoria: "",
       id_proveedor: "",
-      imagen: null,
+      stocks: []
     });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null;
-    }
   };
 
   return (
@@ -146,21 +154,6 @@ const RepuestoForm = ({ repuestoEnEdicionModal, handleSaveModal, onClose }) => {
       </h2>
 
       <div className={styles.gridContainer}>
-        {/* Campos del formulario (Nombre, Código, etc.) */}
-        <div className={styles.formGroup}>
-          <label htmlFor="nombreRepuesto" className={styles.label}>Nombre:</label>
-          <input 
-            type="text" 
-            id="nombreRepuesto" 
-            name="nombre" 
-            value={form.nombre} 
-            onChange={handleChange} 
-            required 
-            className={styles.inputField} 
-            autoComplete="off"
-          />
-        </div>
-
         <div className={styles.formGroup}>
           <label htmlFor="codigoRepuesto" className={styles.label}>Código:</label>
           <input 
@@ -188,90 +181,90 @@ const RepuestoForm = ({ repuestoEnEdicionModal, handleSaveModal, onClose }) => {
             autoComplete="off"
           />
         </div>
-
         <div className={styles.formGroup}>
-          <label htmlFor="stockActualRepuesto" className={styles.label}>Stock actual:</label>
+          <label htmlFor="precioRepuesto" className={styles.label}>Precio:</label>
           <input 
             type="number" 
-            id="stockActualRepuesto" 
-            name="stock_actual" 
-            value={form.stock_actual} 
+            id="precioRepuesto" 
+            name="precio" 
+            value={form.precio} 
             onChange={handleChange} 
             required 
             className={styles.inputField} 
-            min="0"
             autoComplete="off"
           />
         </div>
 
-        <div className={styles.formGroup}>
-          <label htmlFor="ubicacionRepuesto" className={styles.label}>Ubicación:</label>
-          <select 
-            id="ubicacionRepuesto" 
-            name="ubicacion" 
-            value={form.ubicacion} 
-            onChange={handleChange} 
-            required 
-            className={styles.selectField}
-          >
-            <option value="">Seleccione Ubicación</option>
-            <option value="Bodega">Bodega A</option>
-            <option value="Camión">Camión</option>
-          </select>
-        </div>
+        {/* Stock por ubicación */}
+        {ubicaciones.map((ubicacion) => (
+          <div key={ubicacion.id_ubicacion} className={styles.formGroup}>
+            <label htmlFor={`stock-${ubicacion.id_ubicacion}`} className={styles.label}>
+              Stock en {ubicacion.nombre}:
+            </label>
+            <input 
+              type="number" 
+              id={`stock-${ubicacion.id_ubicacion}`}
+              value={form.stocks.find(s => s.id_ubicacion === ubicacion.id_ubicacion)?.stock_actual || ''}
+              onChange={(e) => handleStockChange(ubicacion.id_ubicacion, e.target.value)}
+              className={styles.inputField}
+              min="0"
+              autoComplete="off"
+            />
+          </div>
+        ))}
 
         <div className={styles.formGroup}>
           <label htmlFor="categoriaRepuesto" className={styles.label}>Categoría:</label>
-          <select 
-            id="categoriaRepuesto" 
-            name="id_categoria" 
-            value={form.id_categoria} 
-            onChange={handleChange} 
-            required 
-            className={styles.selectField}
-          >
-            <option value="">Seleccione Categoría</option>
-            {categorias.map((cat) => (
-              <option key={cat.id_categoria} value={String(cat.id_categoria)}>
-                {cat.nombre}
-              </option>
-            ))}
-          </select>
+          <Select 
+            id="idCategoria"
+            name="idCategoria"
+            value={getSelectedValueCategoria(idCategoria)}
+            onChange={handleIdCategoriaChange}
+            options={categoriasOptions}
+            placeholder="Buscar categoría..."
+            noOptionsMessage={() => "No se encontraron categorías"}
+            isSearchable
+            className="basic-single"
+            classNamePrefix="select"
+            loadingMessage={() => "Buscando..."}
+            isLoading={categoriasOptions.length === 0}
+            filterOption={(option, inputValue) => 
+                option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
+                option.ciudad?.toLowerCase().includes(inputValue.toLowerCase())
+            }
+            isClearable
+            required
+          />
+          
         </div>
 
         <div className={styles.formGroup}>
           <label htmlFor="proveedorRepuesto" className={styles.label}>Proveedor:</label>
-          <select 
-            id="proveedorRepuesto" 
-            name="id_proveedor" 
-            value={form.id_proveedor} 
-            onChange={handleChange} 
-            required 
-            className={styles.selectField}
-          >
-            <option value="">Seleccione Proveedor</option>
-            {proveedores.map((prov) => (
-              <option key={prov.id_proveedor} value={String(prov.id_proveedor)}>
-                {prov.empresa} ({prov.nombre})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="imagenRepuesto" className={styles.label}>Imagen:</label>
-          <input 
-            type="file" 
-            id="imagenRepuesto" 
-            name="imagen" 
-            ref={fileInputRef} 
-            onChange={handleChange} 
-            accept="image/*"
-            className={styles.inputField}
+          <Select 
+            id="idProveedor"
+            name="idProveedor"
+            value={getSelectedValueProveedor(idProveedor)}
+            onChange={handleIdProveedorChange}
+            options={proveedoresOptions}
+            placeholder="Buscar proveedor..."
+            noOptionsMessage={() => "No se encontraron proveedores"}
+            isSearchable
+            className="basic-single"
+            classNamePrefix="select"
+            loadingMessage={() => "Buscando..."}
+            isLoading={proveedoresOptions.length === 0}
+            filterOption={(option, inputValue) => 
+                option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
+                option.ciudad?.toLowerCase().includes(inputValue.toLowerCase())
+            }
+            isClearable
+            required
           />
+          
         </div>
+        
       </div>
-
+      
       <button
         type="submit"
         className={`${styles.submitButton} ${

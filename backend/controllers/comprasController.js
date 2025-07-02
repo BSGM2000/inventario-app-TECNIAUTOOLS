@@ -1,4 +1,4 @@
-    // controllers/comprasController.js
+// controllers/comprasController.js
 import db from '../config/db.js';
 
 // GET /api/compras
@@ -11,7 +11,7 @@ export const getAllCompras = async (req, res) => {
             c.numero_factura,
             c.total_compra,
             p.empresa AS proveedor,
-            GROUP_CONCAT(dc.cantidad, ' x ', r.nombre SEPARATOR '; ') AS detalles
+            GROUP_CONCAT(dc.cantidad, ' x ', r.codigo SEPARATOR '; ') AS detalles
         FROM compras c
         INNER JOIN proveedores p ON c.id_proveedor = p.id_proveedor
         LEFT JOIN detalles_compra dc ON c.id_compra = dc.id_compra
@@ -56,7 +56,8 @@ export const getCompraById = async (req, res) => {
             dc.iva,
             dc.precio_compra_con_iva,
             r.id_repuesto,
-            r.nombre
+            r.codigo,
+            r.descripcion
         FROM detalles_compra dc
         INNER JOIN repuestos r ON dc.id_repuesto = r.id_repuesto
         WHERE dc.id_compra = ?
@@ -96,19 +97,29 @@ export const createCompra = async (req, res) => {
         const id_compra = compraResult.insertId;
 
         const detallesCompraSql = `
-        INSERT INTO detalles_compra (id_compra, id_repuesto, cantidad, precio_compra_sin_iva, iva, precio_compra_con_iva)
+        INSERT INTO detalles_compra (id_compra, id_repuesto, cantidad, precio_compra_sin_iva, iva, precio_compra_con_iva, id_ubicacion)
         VALUES ?
         `;
-        const detallesValues = detalles.map(detalle => [id_compra, detalle.id_repuesto, detalle.cantidad, detalle.precio_compra_sin_iva, detalle.iva, detalle.precio_compra_con_iva]);
+        const detallesValues = detalles.map(detalle => [id_compra, detalle.id_repuesto, detalle.cantidad, detalle.precio_compra_sin_iva, detalle.iva, detalle.precio_compra_con_iva, detalle.id_ubicacion]);
         await connection.query(detallesCompraSql, [detallesValues]);
 
-        const actualizarStockSql = `
+        // Actualizar el precio en la tabla repuestos
+        const actualizarPrecioRepuestoSql = `
         UPDATE repuestos
-        SET stock_actual = stock_actual + ?
+        SET precio = ?
         WHERE id_repuesto = ?
         `;
         for (const detalle of detalles) {
-            await connection.query(actualizarStockSql, [detalle.cantidad, detalle.id_repuesto]);
+            await connection.query(actualizarPrecioRepuestoSql, [detalle.precio_compra_sin_iva, detalle.id_repuesto]);
+        }
+
+        const actualizarStockSql = `
+        UPDATE stock_por_ubicacion
+        SET stock_actual = stock_actual + ?
+        WHERE id_repuesto = ? AND id_ubicacion = ?
+        `;
+        for (const detalle of detalles) {
+            await connection.query(actualizarStockSql, [detalle.cantidad, detalle.id_repuesto, detalle.id_ubicacion]);
         }
 
         await connection.commit();
@@ -151,26 +162,28 @@ export const updateCompra = async (req, res) => {
 
         // Obtener los detalles originales de la compra
         const obtenerDetallesOriginalesSql = `
-        SELECT id_repuesto, cantidad
+        SELECT id_repuesto, cantidad, id_ubicacion
         FROM detalles_compra
-        WHERE id_compra = ?
-        `;
+        WHERE id_compra = ?`;
 
         const [detallesOriginales] = await connection.query(obtenerDetallesOriginalesSql, [id]);
         console.log('Detalles Originales:', detallesOriginales);
-        const originalesMap = new Map(detallesOriginales.map(detalle => [detalle.id_repuesto, detalle.cantidad]));
+        const originalesMap = new Map(detallesOriginales.map(detalle => [
+            `${detalle.id_repuesto}-${detalle.id_ubicacion}`,
+            { cantidad: detalle.cantidad, id_ubicacion: detalle.id_ubicacion }
+        ]));
         console.log('Detalles Nuevos (req.body):', detalles);
 
-        // Actualizar stock (Lógica Simplificada)
+        // Actualizar stock (Lógica con ubicaciones)
         const actualizarStockSql = `
-        UPDATE repuestos
-        SET stock_actual = stock_actual + ?
-        WHERE id_repuesto = ?
-        `;
+        INSERT INTO stock_por_ubicacion (id_repuesto, id_ubicacion, stock_actual)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE stock_actual = stock_actual + ?`;
 
         const verificarStockSql = `
-        SELECT stock_actual FROM repuestos WHERE id_repuesto = ?
-        `;
+        SELECT stock_actual
+        FROM stock_por_ubicacion
+        WHERE id_repuesto = ? AND id_ubicacion = ?`;
 
         // Crear un mapa para rastrear las cantidades procesadas
         const cantidadesProcesadas = new Map();
@@ -178,45 +191,55 @@ export const updateCompra = async (req, res) => {
         // Procesar los detalles y actualizar el stock en una sola pasada
         for (const detalle of detalles) {
             const idRepuesto = detalle.id_repuesto;
+            const idUbicacion = detalle.id_ubicacion;
             const cantidadNueva = detalle.cantidad;
-            const cantidadOriginal = originalesMap.get(idRepuesto);
+            const key = `${idRepuesto}-${idUbicacion}`;
+            const detalleOriginal = originalesMap.get(key);
 
             // Calcular la diferencia entre la cantidad nueva y la original
-            const cantidadAActualizar = cantidadOriginal === undefined 
-                ? cantidadNueva // Si es nuevo repuesto, usar cantidad nueva
-                : cantidadNueva - cantidadOriginal; // Si ya existía, calcular diferencia
+            const cantidadAActualizar = detalleOriginal === undefined
+                ? cantidadNueva // Si es nuevo repuesto en esta ubicación, usar cantidad nueva
+                : cantidadNueva - detalleOriginal.cantidad; // Si ya existía, calcular diferencia
 
             if (cantidadAActualizar !== 0) {
-                // Verificar si ya se procesó esta cantidad para este repuesto
-                if (!cantidadesProcesadas.has(idRepuesto) || cantidadesProcesadas.get(idRepuesto) !== cantidadNueva) {
+                // Verificar si ya se procesó esta cantidad para este repuesto y ubicación
+                const keyProcesado = `${idRepuesto}-${idUbicacion}`;
+                if (!cantidadesProcesadas.has(keyProcesado)) {
                     // Verificar stock actual antes de actualizar
-                    const [stockActual] = await connection.query(verificarStockSql, [idRepuesto]);
-                    const nuevoStock = stockActual[0].stock_actual + cantidadAActualizar;
+                    const [stockActual] = await connection.query(verificarStockSql, [idRepuesto, idUbicacion]);
+                    const stockActualValor = stockActual.length > 0 ? stockActual[0].stock_actual : 0;
+                    const nuevoStock = stockActualValor + cantidadAActualizar;
 
                     // Solo actualizar si el nuevo stock no sería negativo
                     if (nuevoStock >= 0) {
-                        await connection.query(actualizarStockSql, [cantidadAActualizar, idRepuesto]);
+                        await connection.query(actualizarStockSql, [idRepuesto, idUbicacion, Math.max(0, cantidadAActualizar), cantidadAActualizar]);
+                    } else {
+                        throw new Error(`Stock insuficiente para el repuesto ${idRepuesto} en la ubicación ${idUbicacion}`);
                     }
                     // Registrar la cantidad procesada
-                    cantidadesProcesadas.set(idRepuesto, cantidadNueva);
+                    cantidadesProcesadas.set(keyProcesado, cantidadNueva);
                 }
             }
             
             // Eliminar del mapa de originales para rastrear los que se eliminaron
-            originalesMap.delete(idRepuesto);
+            originalesMap.delete(key);
         }
 
         // Los repuestos que quedan en originalesMap fueron eliminados de la compra
-        for (const [idRepuestoEliminado, cantidadEliminada] of originalesMap) {
-            // Verificar si ya se procesó esta cantidad para este repuesto
-            if (!cantidadesProcesadas.has(idRepuestoEliminado)) {
+        for (const [key, detalleOriginal] of originalesMap) {
+            const [idRepuesto, idUbicacion] = key.split('-');
+            // Verificar si ya se procesó esta cantidad para este repuesto y ubicación
+            if (!cantidadesProcesadas.has(key)) {
                 // Verificar stock actual antes de eliminar
-                const [stockActual] = await connection.query(verificarStockSql, [idRepuestoEliminado]);
-                const nuevoStock = stockActual[0].stock_actual - cantidadEliminada;
+                const [stockActual] = await connection.query(verificarStockSql, [idRepuesto, idUbicacion]);
+                const stockActualValor = stockActual.length > 0 ? stockActual[0].stock_actual : 0;
+                const nuevoStock = stockActualValor - detalleOriginal.cantidad;
 
                 // Solo actualizar si el nuevo stock no sería negativo
                 if (nuevoStock >= 0) {
-                    await connection.query(actualizarStockSql, [-cantidadEliminada, idRepuestoEliminado]);
+                    await connection.query(actualizarStockSql, [idRepuesto, idUbicacion, 0, -detalleOriginal.cantidad]);
+                } else {
+                    throw new Error(`Stock insuficiente para el repuesto ${idRepuesto} en la ubicación ${idUbicacion}`);
                 }
             }
         }
@@ -224,11 +247,21 @@ export const updateCompra = async (req, res) => {
         // Eliminar los detalles antiguos e insertar los nuevos
         await connection.query(`DELETE FROM detalles_compra WHERE id_compra = ?`, [id]);
         const insertarDetallesSql = `
-        INSERT INTO detalles_compra (id_compra, id_repuesto, cantidad, precio_compra_sin_iva, iva, precio_compra_con_iva)
+        INSERT INTO detalles_compra (id_compra, id_repuesto, cantidad, precio_compra_sin_iva, iva, precio_compra_con_iva, id_ubicacion)
         VALUES ?
         `;
-        const detallesValues = detalles.map(detalle => [id, detalle.id_repuesto, detalle.cantidad, detalle.precio_compra_sin_iva, detalle.iva, detalle.precio_compra_con_iva]);
+        const detallesValues = detalles.map(detalle => [id, detalle.id_repuesto, detalle.cantidad, detalle.precio_compra_sin_iva, detalle.iva, detalle.precio_compra_con_iva, detalle.id_ubicacion]);
         await connection.query(insertarDetallesSql, [detallesValues]);
+
+        // Actualizar el precio en la tabla repuestos
+        const actualizarPrecioRepuestoSql = `
+        UPDATE repuestos
+        SET precio = ?
+        WHERE id_repuesto = ?
+        `;
+        for (const detalle of detalles) {
+            await connection.query(actualizarPrecioRepuestoSql, [detalle.precio_compra_sin_iva, detalle.id_repuesto]);
+        }
 
         await connection.commit();
         res.json({ message: 'Compra actualizada exitosamente', id_compra: id });
@@ -252,7 +285,7 @@ export const deleteCompra = async (req, res) => {
 
         // Obtener los detalles de la compra para revertir el stock
         const obtenerDetallesSql = `
-        SELECT id_repuesto, cantidad
+        SELECT id_repuesto, cantidad, id_ubicacion
         FROM detalles_compra
         WHERE id_compra = ?
         `;
@@ -260,12 +293,12 @@ export const deleteCompra = async (req, res) => {
 
         // Revertir el stock de los repuestos
         const revertirStockSql = `
-        UPDATE repuestos
+        UPDATE stock_por_ubicacion
         SET stock_actual = stock_actual - ?
-        WHERE id_repuesto = ?
+        WHERE id_repuesto = ? AND id_ubicacion = ?
         `;
         for (const detalle of detalles) {
-            await connection.query(revertirStockSql, [detalle.cantidad, detalle.id_repuesto]);
+            await connection.query(revertirStockSql, [detalle.cantidad, detalle.id_repuesto, detalle.id_ubicacion]);
         }
 
         // Eliminar los detalles de la compra

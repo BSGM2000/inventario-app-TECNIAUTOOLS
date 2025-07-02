@@ -39,6 +39,8 @@ const CompraTable = ({ compras, onEdit, onDelete }) => {
                                 <div key={index} className={styles.detalleItem}>
                                     <span className={styles.tableCell}>{detalle.nombre_repuesto}</span>
                                     <span className={styles.tableCell}>(x{detalle.cantidad_compra})</span>
+                                    <span className={styles.tableCell}>{detalle.id_ubicacion}</span>
+
                                 </div>
                             ))
                         )

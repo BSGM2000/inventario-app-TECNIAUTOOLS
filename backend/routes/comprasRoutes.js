@@ -1,6 +1,5 @@
 // routes/comprasRoutes.js
 import express from 'express';
-import verifyToken from '../middleware/auth.js'; // Asegúrate de que la ruta sea correcta
 import {
     getAllCompras,
     getCompraById,
@@ -11,10 +10,10 @@ import {
 
 const router = express.Router();
 
-router.get('/', verifyToken, getAllCompras);
-router.get('/:id', verifyToken, getCompraById);
-router.put('/:id', verifyToken, updateCompra);
-router.post('/', verifyToken, createCompra);
-router.delete('/:id', verifyToken, deleteCompra);
+router.get('/', getAllCompras);
+router.get('/:id', getCompraById);
+router.put('/:id', updateCompra);
+router.post('/', createCompra);
+router.delete('/:id', deleteCompra);
 
 export default router;

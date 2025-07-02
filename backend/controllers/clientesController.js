@@ -23,7 +23,17 @@ export const getAllClients = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
-
+export const getClientById = async (req, res) => {
+    const { id } = req.params;
+    const sql = 'SELECT * FROM clientes WHERE id_cliente = ?';
+    try {
+      const [results] = await db.query(sql, [id]);
+      res.json(results[0]);
+    } catch (error) {
+      console.error('Error al obtener cliente:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  };
 // POST /api/clientes
 export const createClient = async (req, res) => {
   const { codigo_cliente, nombre, documento_cliente, ciudad, direccion, telefono, correo } = req.body;

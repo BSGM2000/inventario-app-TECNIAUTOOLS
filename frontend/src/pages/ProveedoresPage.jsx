@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import ProveedoresForm from "../components/ProveedoresForm";
 import ProveedoresTable from "../components/ProveedoresTable";
 import SearchBar from "../components/SearchBar"; // Reutilizamos el SearchBar
 import styles from "../styles/ProveedoresPage.module.css"; // Asegúrate de crear este archivo CSS
 import Modal from "../components/Modal"; // Importa el componente Modal
+import api from "../config/axios";
 
 const ProvidersPage = () => {
   const [proveedores, setProveedores] = useState([]);
@@ -13,15 +13,10 @@ const ProvidersPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false); // Estado para el modal de eliminación
   const [proveedorToDeleteId, setProveedorToDeleteId] = useState(null); // Estado para almacenar el ID del proveedor a eliminar
   const [filteredProveedores, setFilteredProveedores] = useState([]);
-  const token = localStorage.getItem("token");
 
   const fetchProveedores = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/proveedores", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+        const res = await api.get('/proveedores');
         setProveedores(res.data);
       } catch (error) {
       console.error("Error al cargar proveedores:", error);
@@ -65,14 +60,9 @@ const ProvidersPage = () => {
   try {
     if (proveedorEnEdicionModal) {
       // Actualizar proveedor existente
-      await axios.put(
-        `http://localhost:3000/api/proveedores/${proveedorEnEdicionModal.id_proveedor}`,
-        providerData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      await api.put(
+        `/proveedores/${proveedorEnEdicionModal.id_proveedor}`,
+        providerData
       );
       // Actualizar la lista local de proveedores
       setProveedores((prevProveedores) =>
@@ -82,11 +72,7 @@ const ProvidersPage = () => {
       );
     } else {
       // Crear nuevo cliente
-      const res = await axios.post("http://localhost:3000/api/proveedores", providerData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await api.post('/proveedores', providerData);
       // Actualizar la lista local de proveedores con el nuevo proveedor
       fetchProveedores(); // Recargar proveedores después de agregar uno nuevo
       setProveedores((prevProveedores) => [...prevProveedores, res.data]);
@@ -111,11 +97,7 @@ const handleDelete = (id) => {
   // Eliminar proveedor
 const confirmDelete = async () => {
   try {
-    await axios.delete(`http://localhost:3000/api/proveedores/${proveedorToDeleteId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    await api.delete(`/proveedores/${proveedorToDeleteId}`);
     setProveedores((prevProveedores) =>
       prevProveedores.filter((p) => p.id_proveedor !== proveedorToDeleteId)
     );
