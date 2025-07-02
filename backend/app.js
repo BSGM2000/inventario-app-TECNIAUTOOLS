@@ -31,10 +31,32 @@ console.log('Iniciando aplicación con configuración:', {
 const app = express();
 
 // Middleware para leer JSON
-// Configuración CORS
+// Configuración CORS Dinámica
+const allowedOrigins = [
+  'https://tecniautools.vercel.app', // Tu dominio de producción
+  /https:\/\/tecniautools-.*\.vercel\.app$/ // Expresión regular para TODAS las previews de Vercel
+];
+
 const corsOptions = {
-  origin: 'https://tecniautools.vercel.app', // Especifica el origen exacto
-  credentials: true, // Permite el envío de credenciales
+  origin: (origin, callback) => {
+    // Permitir si el origen está en la lista blanca O si no hay origen (para Postman, etc.)
+    if (!origin || allowedOrigins.some(
+      (allowedOrigin) => {
+        if (typeof allowedOrigin === 'string') {
+          return allowedOrigin === origin;
+        }
+        if (allowedOrigin instanceof RegExp) {
+          return allowedOrigin.test(origin);
+        }
+        return false;
+      }
+    )) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
