@@ -23,6 +23,7 @@
 .logo {
   font-size: 1.25rem;
   font-weight: bold;
+  transition: font-size 0.3s ease;
 }
 
 .navLinks {
@@ -60,6 +61,61 @@
   color: #F44336;
 }
 
+/* Botón de hamburguesa para móviles */
+.menuToggle {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  z-index: 20;
+  transition: transform 0.2s ease;
+}
+
+.menuToggle:hover {
+  transform: scale(1.1);
+}
+
+.hamburger {
+  display: block;
+  position: relative;
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s ease-in-out;
+}
+
+.hamburger::before,
+.hamburger::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.hamburger::before {
+  transform: translateY(-8px);
+}
+
+.hamburger::after {
+  transform: translateY(8px);
+}
+
+/* Animación del botón hamburguesa cuando está abierto */
+.hamburgerOpen {
+  background-color: transparent; /* Hace que la línea del medio desaparezca */
+}
+
+.hamburgerOpen::before {
+  transform: translateY(0) rotate(45deg); /* Centra y rota la línea superior */
+}
+
+.hamburgerOpen::after {
+  transform: translateY(0) rotate(-45deg); /* Centra y rota la línea inferior */
+}
+
 /* Responsividad para pantallas más pequeñas */
 @media (max-width: 768px) {
   .logoContainer {
@@ -82,10 +138,63 @@
   }
 }
 
-/* Responsividad para pantallas aún más pequeñas */
+/* Overlay para cuando el menú está abierto */
+.menuOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 15;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  backdrop-filter: blur(2px);
+}
+
+.menuOverlayOpen {
+  display: block;
+  opacity: 1;
+}
+
+/* Responsividad para pantallas móviles */
 @media (max-width: 576px) {
+  .menuToggle {
+    display: block;
+  }
+
   .navLinks {
-    overflow-x: auto; /* Permite desplazar los enlaces si no caben */
-    -webkit-overflow-scrolling: touch; /* Para desplazamiento suave en iOS */
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 70%;
+    height: 100vh;
+    background-color: #4CAF50;
+    flex-direction: column;
+    padding: 4rem 1rem 1rem;
+    transition: right 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    z-index: 20;
+  }
+
+  .navLinksOpen {
+    right: 0;
+  }
+
+  .navLink,
+  .logoutButton {
+    width: 100%;
+    text-align: center;
+    margin: 0.5rem 0;
+    padding: 0.75rem;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+  }
+  
+  .navLink:hover,
+  .logoutButton:hover {
+    transform: translateX(5px);
+    background-color: rgba(255, 255, 255, 0.1);
   }
 }
